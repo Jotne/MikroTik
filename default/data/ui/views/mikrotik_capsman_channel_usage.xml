@@ -9,8 +9,7 @@
   #
   # Mikrotik Add-On for Splunk
   #
-  # Copyright (C) 2022 Jotne
-  # All Rights Reserved
+  # Created by Jotne 2023
   #
   ######################################################
   --><search id="base_search">

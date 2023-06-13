@@ -3,10 +3,12 @@ https://forum.mikrotik.com/viewtopic.php?t=179960
 
 # Version History
 
-# 3.9 xxxxxxx
-# Added ny version of "MikroTik DHCP layout"
+# 3.9 (13.06.2023)
+# Added discovery type to "MikroTik Neighbor"
+# Added new version of "MikroTik DHCP layout"
 # Added CapsMann fixes by barrthek
 # Updated dhcp_table to work better with new firmat (no more debug logs)
+# Changed to use dhcp_table for client name in "MikroTik Wifi connection" and "MikroTik Wifi strength"
 
 # 3.8 (27.11.2022)
 # Added new dashboard "MikroTik IPsec connections"

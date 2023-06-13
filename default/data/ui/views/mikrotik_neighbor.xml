@@ -1,4 +1,4 @@
-<form version="3.8" theme="dark">
+<form version="3.9" theme="dark">
   <label>MikroTik Neighbor</label>
   <!--Version
   2.8.0 First version
@@ -11,12 +11,12 @@
   3.7.1 Fixed transaction due to rsyslog
   3.7.2 Added DNS for interface
   3.7.3 Fixed smal typo
+  3.9.0 Added discovery type
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Copyright (C) 2022 Jotne
-  # All Rights Reserved
+  # Created by Jotne 2023
   #
   ######################################################
   -->
@@ -33,7 +33,8 @@
       | search 
         host="$Host$"
         local_if="$Local_if$"
-      | fields host host_name local_if remote_ip remote_dns remote_if platform mac_address board
+        discovered_by IN ($Discovered$)
+      | fields host host_name local_if remote_ip remote_dns remote_if platform mac_address board discovered_by
     </query>
   </search>
   <fieldset submitButton="false">
@@ -74,6 +75,12 @@
       <fieldForLabel>info</fieldForLabel>
       <fieldForValue>data</fieldForValue>
     </input>
+    <input type="checkbox" token="Discovered">
+      <label>Discovered by</label>
+      <choice value="cdp">cdp</choice>
+      <choice value="mndp">mndp</choice>
+      <default>cdp,mndp</default>
+    </input>
   </fieldset>
   <row>
     <panel>
@@ -82,7 +89,7 @@
           <query>
             | fillnull value="-" 
             | eval remote_dev=remote_ip." (".remote_dns.")-".mac_address
-            | table host host_name local_if remote_dev remote_if platform board
+            | table host host_name local_if remote_dev remote_if platform board discovered_by
           </query>
         </search>
         <option name="count">50</option>
@@ -117,6 +124,10 @@
           <scale type="sharedCategory"></scale>
         </format>
         <format type="color" field="remote_dev">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="discovered_by">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>

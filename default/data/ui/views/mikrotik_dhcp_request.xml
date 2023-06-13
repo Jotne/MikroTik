@@ -1,4 +1,4 @@
-<form version="3.9.0" theme="dark">
+<form version="3.9" theme="dark">
   <label>MikroTik DHCP requests</label>
   <!--Version 
   2.4.0
@@ -26,7 +26,6 @@
   # Mikrotik Add-On for Splunk
   #
   # Copyright (C) 2023 Jotne
-  # All Rights Reserved
   #
   ######################################################
   -->

@@ -1,4 +1,4 @@
-<form version="3.8" theme="dark">
+<form version="3.9" theme="dark">
   <label>MikroTik Netwatch</label>
   <description>This Dashboard shows logging from Netwatch function.  Can be used to monitor Wireguard etc.  Last_chage =  # hour since status change</description>
   <!--Version 
@@ -8,8 +8,7 @@
   #
   # Mikrotik Add-On for Splunk
   #
-  # Copyright (C) 2022 Jotne
-  # All Rights Reserved
+  # Created by Jotne 2023
   #
   ######################################################
   -->
