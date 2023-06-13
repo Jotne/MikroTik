@@ -1,0 +1,96 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik Wifi strength</label>
+  <!--Version 
+  2.4.0
+  2.5.0
+  2.7.1 fixed base search
+  2.7.2 cleaned up
+  2.7.3 fixed sctipt tag
+  2.9.0 Added identity
+  3.0.0 Fixed missing identity
+  3.1.0 Added name_id for mac
+  3.2.0 Fixed error in number of mac pr host
+  3.3.0 Fixed lookup
+  3.3.1 Changed from table to fields
+  3.4.0 Removed host from lookup
+  3.7.0 Added dashboard version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      module=script
+      script=wifi
+      ap=*
+      host="$Host$"
+      mac_address="$Client$"
+      | eval host_name=coalesce(identity,host)
+      | lookup dhcp_table mac as mac_address OUTPUT name_id
+      | rename mac_address as mac
+      | fields _time host mac signal_strength host_name name_id
+      | fillnull value="-" 
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host (# clients pr Host)</label>
+      <search base="base_search">
+        <query>
+          | stats dc(mac) as NumMac by host host_name
+          | eval info=host_name."-".host." (".NumMac.")"
+          | sort - NumMac
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Client">
+      <label>Client</label>
+      <search base="base_search">
+        <query>
+          | eval data=mac
+          | stats count by data name_id
+          | eval info = coalesce(name_id."-".data,data)." (".count.")"
+          | dedup data
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <search base="base_search">
+          <query>
+            | eval mac = coalesce(name_id."-".mac,mac)
+            | timechart minspan=5m avg(signal_strength) by mac</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.lineWidth">5</option>
+        <option name="height">600</option>
+      </chart>
+    </panel>
+  </row>
+</form>

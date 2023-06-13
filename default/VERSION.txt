@@ -1,0 +1,271 @@
+For tutorial on how to install, see this page:
+https://forum.mikrotik.com/viewtopic.php?t=179960
+
+# Version History
+
+# 3.9 xxxxxxx
+# Added ny version of "MikroTik DHCP layout"
+# Added CapsMann fixes by barrthek
+# Updated dhcp_table to work better with new firmat (no more debug logs)
+
+# 3.8 (27.11.2022)
+# Added new dashboard "MikroTik IPsec connections"
+# Added new dashboard "MikroTik PPP connections"
+# Change from bytes to delta_bytes in table in "MikroTik Device Traffic"
+# Removed 0 fields to make math correct in "MikroTik Device Traffic"
+# Hide parameter list in "MikroTik DHCP request"
+# Change transaction to 100ms in "MikroTik DHCP request"
+# Set dropdown to request as default in "MikroTik DHCP request"
+# Added packet mark in "MikroTik Firewall Rules"
+# Added new panel with optional input in "MikroTik Firewall Rules"
+# Fixed missing packet-marking i firewall extraction
+# Added disabled status and added VPN route in "MikroTik Route List"
+# Fixed "Device table updater" to better follow firmware upgrade/downgrade
+# Fixed saved search rights to not show up everywhere
+
+# 3.7 (27.08.2022)
+# Fixed Splunk read from rsyslog data
+# Added view "MikroTik WireGuard Error"
+# Updated some Capsman search
+# Added version info in header to conform with Splunk v9.0
+# Fixed transaction due to rsyslog in "MikroTik Neighbor"
+# Added DNS for interface for "MikroTik Neighbor"
+# Removed outputlookup from "MikroTik Device List"
+# Fixed metadata config
+# Removed clients with 0 bytes in "MikroTik Device Traffic"
+# Added script version in "MikroTik Device List"
+# Removed x/y axes in "MikroTik VPN Connections"
+# Moved version info to VERSION.txt
+# Change App name from "MikroTik 3.7" to "MikroTik App for Splunk"
+# Added ?: to regex to speed up extraction
+# Updated Firewall regex to handle prio and connection-state fields
+# Script updated to #4.9 to collect routing information
+# Added new dashboard "MikroTik Route List"
+# Added new dashboard "MikroTik OSPF Neighbors"
+# Added new dashboard "MikroTik BPG Neighbors"
+
+# 3.6 (05.05.2022)
+# NB Delete old app (copy custom made config) before install v3.6
+# Change data to store in Mikrotik index, instead of default index
+# Change how rsyslog handles data. Did fail if there was more than one type of input
+# Updeted script in "MikroTik DHCP to Static"
+# Uses new Index, important to look at macros.conf and set correct index.
+# Added colors to "MikroTik Admin user login"
+
+# 3.5 (20.12.2021)
+# Changed from IP Accounting to Kid Control to get accounting data to work with 7.x RouterOS
+# Renamed "MikroTik Volt/Temperature" to "MikroTik Health"
+# Added more info to "Mikrotik Health"
+
+# 3.4 (02.11.2021)
+# Renamed "Mikrotik uPnP" to "MikroTik Dynamic nat rules" and added more dynamic rules
+# Fixed flag extraction in props.conf when flag is empty
+# Fixed sorting in "MikroTik CMD History"
+# Added span=1h to get more details in "MikroTik DHCP pool information"
+# Fixed missing color in "MikroTik Firewall Rules"
+# Removed host for lookup in "MikroTik Wifi strength"
+# Fixed DHCP lookup in props.conf & transforms.conf
+# Fixed DHCP & Device updater script
+
+# 3.3 (13.08.2021)
+# New KV store (used to store info about Devices and DHCP info
+# Changed from table to fields in base search for all dashboard to speed up searches.
+# Added more DNS extraction
+# Updated script to 4.4 (Added firmware info)
+# Added frimware info "MikroTik Device List"
+# Fixed lookup "MikroTik Wifi strength"
+# Added new DoH dashboard "MikroTik DoH information"
+# Change table format "MikroTik Interface Changes"
+# Fixed typo in eventtype "MikroTik VPN Connections"
+# Added user local ip "MikroTik VPN Connections"
+# Fixed missing search in 2b, duplicate entry in user-name, added 1b login info "MikroTik VPN Connections"
+# Fixed to not show false logged in user "MikroTik VPN Connections"
+# Fixed html formatting in "Mikrotik DHCP to Static"
+# Fixed missing City in "Mikrotik Firewall Rules"
+# Moved "Mikrotik uPnP" to Connections menu
+# Added table view to "Mikrotik uPnP"
+
+# 3.2 (21.02.2021)
+# Fixed DHCP extractbiondue to change in 6.48 log format.
+# Fixed error in numer of mac pr host in "MikroTik Wifi strength"
+# Added more info in "MikroTik Accouning Traffic"
+# Added list in "MikroTik Admin user login"
+# Added Source Port in "MikroTik Firewall Rules"
+# Added more info in "MikroTik Log Size"
+# Added logout and added client_id info. Fixed sorting "MikroTik PPPoE Connection"
+# Fixed Time in "MikroTik System Changes"
+# Added multi selection in graphs, moved legends in "MikroTik uPnP"
+# Fixed typo in "MikroTik VPN Connection"
+
+# 3.1 (25.06.2020)
+# Added CAPsMAN view and extraction
+# Added limit=0 to "MikroTik DHCP pool information"
+# Added dhcp server to "MikroTik DHCP request"
+# Added pool selection to "MikroTik DHCP pool information"
+# Added information about static release in "MikroTik DHCP pool information"
+# Updated script to 4.0 removed double information and added write-sector information
+# Added Sector Writes to "Mikrotik Resources"
+# Updeated KV search in "Mikrotik Device List" to not overwrite all data
+# Fixed missing host in "Mikrotik Uptime"
+# Fixed KV update and change names
+# Added src_ip counter in "Mikrotik DNS Live usage"
+# Added name_id for mac in "MikroTik Wifi connection" and "MikroTik Wifi strength"
+# Added sort by host/module and hostname in "MikroTik Log Size"
+# Added free text search to "MikroTik Firewall Rules"
+
+# 3.0 (27.05.2020)
+# Fixed missing identity before device are logged to index
+# Added PPPoE view
+# Added IPv6 support for firewall
+# Added support for using external rsyslog server
+# Updated "Device List" to update KV-Store automatically when run
+# Added dhcp_name to "MikroTik DHCP to Static"
+# Change script and dashboard for "MikroTik Neighbor"
+# Added more infor for the "Mikrotik Wifi connection"
+# Updated script to 3.5, Better RouterOS v7 handling
+# Updated script to 3.6, NTP info
+# Updated script to 3.8, Change some colelction to get info every hour, not every 5 min (CDP++)
+# Updated script to 3.9, to get better command history fro v7 RouterOS, fixed better NTP/SNTP handling
+# Added minspan=5m to some graphs
+# Fixed "MikroTik DNS Live usage" to work without dns packets log
+
+# 2.9 (14.04.2020)
+# Added KVstore DB to handel device info (identity)
+# Fixed "MikroTik DNS Live usage" showing wrong count
+# Fixed "MikroTik DHCP request" duplicate entity and cleaned up table
+# Renamed "Mikrotik Admin connection" to "MikroTik Admin user login"
+# Removed "_time" for X-Axes in dashboards
+# Added NTP warning to "MikroTik System Changes"
+# Added auto lookup of host to identity
+# Added option to select CPU/Disk/Memory in "MikroTik Resources"
+# Rearanged the menu layout
+# Moved various test to the "device list" page and set the page as default
+# Updated sctipt to 3.3, Added NTP info and version info
+# Updated sctipt to 3.4,  Gives more correct transfer statistics pr interface
+
+# 2.8 (07.12.2019)
+# Added interface changes
+# Updated script to 2.7, added uncounted traffic and fastrack test, fixed when missing temperature
+# Updated script to 2.8, fixed where system healt does not show anything (x86)
+# Updated script to 2.9, get interface counters and you can also set modules true/false
+# Updated script to 3.0, get CDP neigbhours
+# Updated script to 3.1, fixed CPD info for long lines
+# Added new view "MikroTik Neighbor"
+# Added uncounted packages to "MikroTik Traffic"
+# Added board_name to "MikroTik Device List"
+# Added Mikrotik interface Traffic"
+# Fixed l2tp user extraction
+# Fixed VPN when user info is missing
+# Added access rule dropdown to "Live attack"
+# Added some color and more field to "DHCP Request"
+# Fixed Span and removed time scal "System Changes"
+# Fixed missing mac in "Admin Conection"
+# Added more lines and color in "DHCP request"
+# Added output color in "Firewall Rules"
+# Added rule menu to "Live attack"
+# Added "DATETIME_CONFIG = CURRENT" to props.conf
+
+# 2.7 (01.07.2019)
+# New view added "Address Lists Counters"
+# Changes most view to use "Base Search"
+# Changed "MikroTik DHCP request" to use stats and fixed host flaw
+# Changed "MikroTik System Changes"  to use 30 day and 4 hour span and maxspan in transaction
+# Removed changes to "DHCP leases" in "MikroTik System Changes"
+# Added search in dropdown for "MikroTik DNS Live usage"
+# Added Time picker for "MikroTik Device List"
+# Speeded up "MikroTik Remote Connection"
+# Fixed wrong timestamp of packets logged
+# Changed "MikroTik DHCP request" to use stats and fixed host flaw and maxspan in trnsaction
+# Added search in dropdown for "MikroTik DNS Live usage" and added IP to client and change sorting
+# Fixed "MikroTik DNS request" to use correct dropdown lists
+# Fixed "MikroTik Firewall Rules" to use better searh, removed base level, added counters, long prefix
+# Rewritten "MikroTik Live attack" to speed up and added more dropdown
+# Fixed "MikroTik Resources" to give correct host number
+# Changed "MikroTik System Changes"  to use 30 day and 4 hour span, removed DHCP info
+# Fixed "MikroTik Traffic" to use script= and some clean up
+# Fixed "MikroTik uPnP" script name, added ip to dropdown
+# Added to ">MikroTik Uptime" dropdown menu
+# Fixed "MikroTik Volt/Temperature" sorting
+# Fixed "MikroTik VPN Connection" faster search
+# Fixed "MikroTik Web Proxy" sorting and some code clean up
+# Changed "MikroTik Wifi strength" to use script tag and some clean up
+# Added "dashboard.css" to set menu color global
+
+# 2.6 (22.01.2019)
+# Added information about fast track in "traffic monitor"
+# Fixed typo in Traffic view.  Added fast track info
+# Changed to checkbox in "DNS Request"
+# Added better sparkline "in Device List"
+# Added identity to "Device List"
+# Updated script to get identity
+# Removed parentheses from services from "MikroTik uPnP"
+# Added ip to client drop-down list to "MikroTik uPnP"
+# Added more disk info to "MikroTik Resources"
+# Changed to last 12 hour instead of 4 in "MikroTik DNS Live usage"
+# Changed to sort by count in "Sort by count"
+# Added timeline dashboard to "DNS Request"
+# Fixed public IP speed by reducing lookup in "Traffic"
+
+# 2.5 (25.11.2018)
+# Change all "if" test to use "coalesce"
+# Fixed error in "MikroTik DNS request"
+# Moved more to base search
+# Removed some code not needed in "MikroTik Web Proxy"
+# Fixed error with src_port in dest_ip dropdown in "MikroTik Firewall Rules"
+
+# v2.4 (20.11.2018)
+# Updated "MikroTik Hotspot login/logout information" to show IP
+# Fixed when inn interface= unknown
+# Updated view 2.4 to handel more hits
+# Updated "MikroTik DNS" to not view revers lookup "site!=*.in-addr.arpa"
+# Rewritten "Microtik Traffic" Error in all calculation
+# Fixed data rounding and fixed typo
+# Fixed formating in "MikroTik Remote Connection"
+# Set permission view the view to show in app only
+# Added System Changes as a new default menu
+# Fixed missing host in "MikroTik Uptime"
+# Added Host to "MikroTik Traffic"
+# Added view "MikroTik Wifi strength"
+# Added view "MikroTik System Changes"
+# Dark theme needs >=7.2
+# Removed global time (use default time)
+# Removed searchWhenChanged="true" (default)
+# Cleaned code
+# Added Sprakline to "MikroTik Device List"
+
+# v2.3 (10.08.2018)
+# Created an Splunk app version
+
+# v2.2 (31.07.2018)
+# Removed Host info at the bootom in "MikroTik DNS Live usage"
+# Fixed overnship of various dashboard
+# Fixed "MikroTik Wifi connection" to show connected if it has no signal strength
+
+# v2.1 (28.07.2018)
+# Fixed typo in "MikroTik DNS request"
+# Fixed wrong eval in "MikroTik Traffic"
+# Removed search used localy in "MikroTik DNS Live usage"
+# Removed not needed SED line from props.conf
+
+# v2.0 (27.07.2018)
+# Removed accouning script from Splunk and moved geting data inn to Mikrotik script
+# Removed all SNMP request since its host spesificed
+# Removed SNMP traps. Not used
+# Updated "Mikrotik DHCP pool information" to use syslog
+# Updated "MikroTik Traffic" to use syslog
+# Updated "MikroTik uPnP" to use syslog
+# Updated "MikroTik Volt/Temperature" to use syslog
+# Updaded "Mikrotik DHCP request" to show graphical DHCP request
+# Added "MikroTik Resources" showing hdd/memory/cpu
+# Added host to all dashboard (to handle logs from may Routers at the same time)
+# Added "MikroTik Uptime" view
+
+# v1.1 (28.01.2017)
+# Changed Miktotik Firewall to Mikrotik Traffic
+# Changed MikroTik DHCP request so it shows request when hostname is not shown.
+# Added all private nett to inside filter
+# Added "hostname" to dhcp script
+# Added "host" to DHCP pool information
+
+
+

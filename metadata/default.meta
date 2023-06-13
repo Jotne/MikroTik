@@ -1,0 +1,18 @@
+[]
+access = read : [ * ], write : [ admin ]
+export = system
+
+[transforms]
+export = none
+
+[views]
+export = none
+
+[lookups]
+export = none
+
+[savedsearches]
+export = none
+
+[transforms]
+export = system

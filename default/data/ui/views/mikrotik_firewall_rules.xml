@@ -1,0 +1,428 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik Firewall Rules</label>
+  <description>Data collected from Syslog</description>
+  <!--Version
+  2.4.1 Fixed error with src_port in dest_ip dropdown
+  2.5.1 Changed to "Coalesce"
+  2.6.1 Sourt by count
+  2.7.1 Cleaned searh
+  2.7.2 useother=false to remove base level
+  2.7.3 Added counters
+  2.8.1 Added "output" color
+  2.9.0 Added identity
+  3.0.0 Fixed missing identity
+  3.1.0 Added Free text search
+  3.2.0 Added source port
+  3.3.0 Fixed missing City
+  3.3.1 Change from table to fields
+  3.4.0 Fixed missing color
+  3.7.0 Added dashboard version
+  3.7.1 Added connection state/mark
+  3.8.0 Added packet mark
+  3.8.1 Added new panel with optional input
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      module=firewall
+      $Free$
+      host="$host$"
+      rule="$rule$"
+      chain="$chain$"
+      in_if="$in_if$"
+      out_if="$out_if$"
+      src_mac="$src_mac$"
+      protocol="$protocol$"
+      src_ip="$src_ip$"
+      src_port="$src_port$"
+      dest_ip="$dest_ip$"
+      dest_port="$dest_port$"
+      | fillnull value=NULL
+      | search
+        packet_mark="$packet_mark$"
+        connection_mark="$connection_mark$"
+        connection_state="$connection_state$"
+      | eval host_name=coalesce(identity,host)
+      | fields _time host rule chain in_if out_if src_mac protocol src_ip dest_ip src_port dest_port host_name packet_mark connection_mark connection_state
+    </query>
+  </search>
+  <search base="base_search">
+    <query>
+      | stats dc(dest_port) as count1 dc(src_ip) as count2 count as count3
+    </query>
+    <finalized>
+      <set token="DestPort_count">$result.count1$</set>
+      <set token="SrcIP_count">$result.count2$</set>
+      <set token="Total_count">$result.count3$</set>
+    </finalized>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label>Time Range</label>
+      <default>
+        <earliest>-15m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data host_name
+          | eval info=host_name."-".data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="dropdown" token="rule">
+      <label>Rule</label>
+      <search base="base_search">
+        <query>
+          | eval data=rule
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="dropdown" token="chain">
+      <label>Chain</label>
+      <search base="base_search">
+        <query>
+          | eval data=chain
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="dropdown" token="in_if">
+      <label>Input Interface</label>
+      <search base="base_search">
+        <query>
+          | eval data=in_if
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+          </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="dropdown" token="out_if">
+      <label>Output Interface</label>
+      <search base="base_search">
+        <query>
+          | eval data=out_if
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+           </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="dropdown" token="src_mac">
+      <label>Source MAC</label>
+      <search base="base_search">
+        <query>
+          | eval data=src_mac
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="dropdown" token="protocol">
+      <label>Protocol</label>
+      <search base="base_search">
+        <query>
+          | eval data=protocol
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="dropdown" token="src_ip">
+      <label>Source IP</label>
+      <search base="base_search">
+        <query>
+          | eval data=src_ip
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="dropdown" token="src_port">
+      <label>Source port</label>
+      <search base="base_search">
+        <query>
+          | eval data=src_port
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="dropdown" token="dest_ip">
+      <label>Destination IP</label>
+      <search base="base_search">
+        <query>
+          | eval data=dest_ip
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="dropdown" token="dest_port">
+      <label>Destination port</label>
+      <search base="base_search">
+        <query>
+          | eval data=dest_port
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="dropdown" token="packet_mark">
+      <label>Packet Mark</label>
+      <search base="base_search">
+        <query>
+          | eval data=packet_mark
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="dropdown" token="connection_mark">
+      <label>Connection Mark</label>
+      <search base="base_search">
+        <query>
+          | eval data=connection_mark
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="dropdown" token="connection_state">
+      <label>Connection State</label>
+      <search base="base_search">
+        <query>
+          | eval data=connection_state
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="text" token="Free">
+      <label>Free Text</label>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <input type="dropdown" token="Sort">
+        <label>Sort By</label>
+        <choice value="host">Host</choice>
+        <choice value="rule">Rule</choice>
+        <choice value="chain">Chain</choice>
+        <choice value="in_if">In Interface</choice>
+        <choice value="out_if">Out Interface</choice>
+        <choice value="src_mac">Src mac</choice>
+        <choice value="protocol">Protocol</choice>
+        <choice value="src_ip">Src IP</choice>
+        <choice value="src_port">Src Port</choice>
+        <choice value="dest_ip">Dest Ip</choice>
+        <choice value="dest_port">Dest Port</choice>
+        <choice value="packet_mark">Packet Mark</choice>
+        <choice value="connection_mark">Connection Mark</choice>
+        <choice value="connection_state">Connection State</choice>
+        <choice value="City">City</choice>
+        <choice value="Country">Country</choice>
+        <default>dest_port</default>
+      </input>
+      <chart>
+        <search base="base_search">
+          <query>
+            | iplocation src_ip
+            | eval City=if(City="","Unknown",City)
+            | timechart count by $Sort$ limit=20 useother=false usenull=false
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <search base="base_search">
+          <query>| iplocation src_ip
+            | eval City=if(City="","Unknown",City)
+            | stats count by $Sort$</query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="height">332</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Number of entries #$Total_count$,  dest_port #$DestPort_count$, src_ip #$SrcIP_count$</title>
+        <search base="base_search">
+          <query>
+            | iplocation src_ip
+            | eval City=if(City="","Unknown",City)
+            | rex field=rule "^(?&lt;type&gt;.)(?&lt;dir&gt;.)_(?&lt;act&gt;.+?)_"
+            | table _time host type dir act rule chain in_if out_if src_mac protocol src_ip src_port dest_ip dest_port packet_mark connection_mark connection_state City Country
+            | sort -_time</query>
+        </search>
+        <option name="count">50</option>
+        <option name="wrap">false</option>
+        <format type="color" field="chain">
+          <colorPalette type="map">{"input":#F8BE34,"dstnat":#6DB7C6,"forward":#53A051,"output":#006D9C,"srcnat":#AF575A,"prerouting":#F1813F}</colorPalette>
+        </format>
+        <format type="color" field="protocol">
+          <colorPalette type="map">{"47":#006D9C,"TCP":#65A637,"UDP":#D93F3C,"ICMP":#F8BE34}</colorPalette>
+        </format>
+        <format type="color" field="rule">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="in_if">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="out_if">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="src_ip">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="src_port">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="dest_ip">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="dest_port">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="City">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="Country">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="src_mac">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="type">
+          <colorPalette type="map">{"F":#53A051,"R":#006D9C,"N":#F8BE34,"M":#AF575A}</colorPalette>
+        </format>
+        <format type="color" field="act">
+          <colorPalette type="map">{"D":#DC4E41,"RE":#DC4E41,"T":#DC4E41,"DE":#62B3B2,"M":#006D9C,"J":#F8BE34,"AS":#5A4575,"A":#53A051,"L":#FFFFFF}</colorPalette>
+        </format>
+        <format type="color" field="dir">
+          <colorPalette type="map">{"I":#F8BE34,"F":#53A051,"O":#B6C75A,"D":#53A051,"X":#006D9C,"S":#AF575A,"P":#F1813F}</colorPalette>
+        </format>
+        <format type="color" field="connection_state">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="connection_mark">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="packet_mark">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="host">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

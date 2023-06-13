@@ -1,0 +1,70 @@
+<nav>
+  <collection label="Overview">
+    <view name="mikrotik_device_list" default='true'/>
+    <view name="mikrotik_admin_user_login"/>
+    <view name="mikrotik_system_changes"/>
+    <view name="mikrotik_cmd_history"/> 
+    <view name="mikrotik_uptime"/>
+    <view name="mikrotik_resources"/>
+    <view name="mikrotik_health"/>
+    <view name="mikrotik_neighbor"/>
+    <view name="mikrotik_log_size"/>
+  </collection>
+  <collection label="Connections">
+    <view name="mikrotik_dynamic_nat_rules"/>
+    <view name="mikrotik_hotspot"/>
+    <view name="mikrotik_web_proxy"/>
+    <view name="mikrotik_wireguard_errror"/>
+    <view name="mikrotik_vpn_connections"/>
+    <view name="mikrotik_ppp_connections"/>
+    <view name="mikrotik_ipsec_connections"/>
+  </collection>
+  <collection label="DNS">
+    <view name="mikrotik_dns_live_usage"/>
+    <view name="mikrotik_dns_request"/>
+    <view name="mikrotik_doh_information"/>
+  </collection>
+  <collection label="DHCP">
+    <view name="mikrotik_dhcp_request"/>
+    <view name="mikrotik_dhcp_pool_information"/>
+    <view name="mikrotik_dhcp_to_static"/>
+  </collection>
+  <collection label="PPPoE">
+    <view name="mikrotik_pppoe_connection"/>
+    <view name="mikrotik_pppoe_usage"/>
+    <view name="mikrotik_pppoe_errors"/>
+  </collection>
+  <collection label="Routing">
+    <view name="mikrotik_route_list"/>
+    <view name="mikrotik_ospf_neighbors"/>
+    <view name="mikrotik_bgp_neighbors"/>
+  </collection>  
+  <collection label="Traffic">
+    <view name="mikrotik_firewall_rules"/>
+    <view name="mikrotik_accounting_traffic"/>
+    <view name="mikrotik_interface_traffic"/>
+  </collection>
+  <collection label="Wifi">
+    <view name="mikrotik_wifi_connection"/>
+    <view name="mikrotik_wifi_strength"/>
+  </collection>
+  <collection label="CAPsMAN">
+    <view name="mikrotik_capsman_wifi_connection"/>
+    <view name="mikrotik_capsman_number_of_clients_pr_ap"/>
+    <view name="mikrotik_capsman_channel_usage"/>
+  </collection>
+  <collection label="Other_view">
+    <view name="mikrotik_address_lists_counters"/>
+    <view name="mikrotik_live_attack"/>
+    <view name="mikrotik_interface_changes"/>
+    <view name="mikrotik_netwatch"/>
+  </collection>
+  <view name="information"/>  
+  <view name="search"/>
+  <view name="alerts"/>
+  <view name="reports"/>
+  <view name="dashboards"/>
+  <collection label="Others">
+    <view source="unclassified" />
+  </collection>
+</nav>

@@ -1,0 +1,153 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik PPPoE Usage</label>
+  <description>Shows PPPoE bytes sent/recieved by user based on logout information</description>
+  <!--Version 
+  3.0.0 First version
+  3.3.0 Changed from table to fields
+  3.7.0 Added dashboard version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      module=pppoe
+      eventtype="pppoe_logout"
+      host="$Host$"
+      user="$User$"
+      | eval host_name=coalesce(identity,host)
+      | fields _time host host_name user src_ip time rcv_bytes sent_bytes eventtype
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data host_name
+          | eval info=host_name."-".data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="User">
+      <label>User (bytes sent to client)</label>
+      <search base="base_search">
+        <query>
+          | eval data=user
+          | stats sum(sent_bytes) as sent_bytes by data
+          | eval sent_bytes=round(sent_bytes$size$,1)
+          | eval info=data." (".sent_bytes.")"
+          | sort -sent_bytes
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="size">
+      <label>Size</label>
+      <choice value="/1">Bytes</choice>
+      <choice value="/1024">KB</choice>
+      <choice value="/1024/1024">MB</choice>
+      <choice value="/1024/1024/1024">GB</choice>
+      <choice value="/1024/1024/1024/1024">TB</choice>
+      <default>/1024/1024</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <title>Received from clients</title>
+        <search base="base_search">
+          <query>
+             | stats sum(rcv_bytes) as rcv_bytes by user
+             | eval rcv_bytes=round(rcv_bytes$size$,1)
+          </query>
+        </search>
+        <option name="charting.chart">pie</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Sent to clients</title>
+        <search base="base_search">
+          <query>
+             | stats sum(sent_bytes) as sent_bytes by user
+             | eval sent_bytes=round(sent_bytes$size$,1)
+          </query>
+        </search>
+        <option name="charting.chart">pie</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Time used (seconds)</title>
+        <search base="base_search">
+          <query>
+             | stats sum(time) as time by user
+          </query>
+        </search>
+        <option name="charting.chart">pie</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Received bytes</title>
+        <search base="base_search">
+          <query>
+            | stats sum(rcv_bytes) as rcv_bytes
+            | eval rcv_bytes=round(rcv_bytes$size$,1)
+          </query>
+        </search>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Sent bytes</title>
+        <search base="base_search">
+          <query>
+            | stats sum(sent_bytes) as sent_bytes
+            | eval sent_bytes=round(sent_bytes$size$,1)
+          </query>
+        </search>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Number of users</title>
+        <search base="base_search">
+          <query>
+            | dedup user
+            | stats count
+          </query>
+        </search>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+  </row>
+</form>

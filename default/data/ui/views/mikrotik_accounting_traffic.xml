@@ -1,0 +1,169 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik Device Traffic</label>
+  <description>Needs script version &gt;= 4.8 to collect correct data. (Using Kid Control)</description>
+  <!--Version
+  3.5.0 New version based on Kid Control
+  3.7.0 Added dashboard version
+  3.7.1 Removed clients with 0 bytes
+  3.8.0 Change from bytes to delta_bytes in table
+  3.8.1 Removed 0 fields to make math correct
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      module=script
+      script=kids
+      host="$Host$"
+      ip_address=$Client$
+      | where bytes_up&gt;0 and bytes_down&gt;0
+      | where rate_down&gt;0 OR rate_up&gt;0
+      | streamstats current=f last(bytes_down) AS last_down last(bytes_up) as last_up BY ip_address
+      | eval delta_down=last_down-bytes_down, delta_up=last_up-bytes_up
+      | eval bytes=if("$direction$"=="in",delta_up,delta_down)
+      | eval bytes=round(bytes$size$,1)
+      | eval  host_name=coalesce(identity,host)
+      | lookup dnslookup clientip as ip_address OUTPUT clienthost as client
+      | eval client=if(isnull(client),ip_address,client)
+      | rename user as group
+      | fields _time host ip_address bytes host_name group client activity blocked limited dynamic bytes_down bytes_up idle_time mac_address rate_down rate_up test delta_*
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label>Time Range</label>
+      <default>
+        <earliest>-4h@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <choice value="*">Any</choice>
+      <search base="base_search">
+        <query>
+          | eval data = host
+          | stats sum(bytes) as count by data host_name
+          | eval info=host_name." (".count.")"
+          | sort -info
+        </query>
+      </search>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="radio" token="direction">
+      <label>Direction</label>
+      <choice value="in">In-&gt;Out Upload</choice>
+      <choice value="out">Out-&gt;In Download</choice>
+      <default>out</default>
+    </input>
+    <input type="dropdown" token="Client">
+      <label>Client</label>
+      <choice value="*">Any</choice>
+      <search base="base_search">
+        <query>
+         | eval data = ip_address
+         | stats sum(bytes) as count by data client
+         | eval info=client.":".data." (".count.")"
+         | sort -count
+        </query>
+      </search>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="size">
+      <label>Size</label>
+      <choice value="/1">Bytes</choice>
+      <choice value="/1024">KB</choice>
+      <choice value="/1024/1024">MB</choice>
+      <choice value="/1024/1024/1024">GB</choice>
+      <choice value="/1024/1024/1024/1024">TB</choice>
+      <default>/1024/1024</default>
+    </input>
+    <input type="dropdown" token="Span" searchWhenChanged="true">
+      <label>Time Span</label>
+      <choice value="">Default</choice>
+      <choice value="span=5m">5 min</choice>
+      <choice value="span=1h">1 hour</choice>
+      <choice value="span=1d">1 day</choice>
+      <default></default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <title>Data pr client over time</title>
+        <search base="base_search">
+          <query>
+            | timechart minspan=5m $Span$ limit=20  avg(bytes) AS Data by client usenull=f
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">area</option>
+        <option name="height">500</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Percent data pr client (sum over timespan)</title>
+        <search base="base_search">
+          <query>
+            | chart eval(round(sum(bytes),1)) AS Data by client
+          </query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="height">500</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Last status from each active device (since reset or reboot)</title>
+      <input type="radio" token="last">
+        <label></label>
+        <choice value="| dedup mac_address">last</choice>
+        <choice value="```all```">all</choice>
+        <default>| dedup mac_address</default>
+      </input>
+      <table>
+        <search base="base_search">
+          <query>
+            | rename delta_up as delta_bytes_up, delta_down as delta_bytes_down, 
+            | table _time host host_name ip_address mac_address client group activity blocked limited dynamic delta_* rate_down rate_up idle_time
+            $last$
+          </query>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="client">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="blocked">
+          <colorPalette type="map">{"true":#DC4E41,"false":#53A051}</colorPalette>
+        </format>
+        <format type="color" field="limited">
+          <colorPalette type="map">{"true":#DC4E41,"false":#53A051}</colorPalette>
+        </format>
+        <format type="color" field="dynamic">
+          <colorPalette type="map">{"false":#DC4E41,"true":#53A051}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

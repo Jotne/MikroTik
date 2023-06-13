@@ -1,0 +1,126 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik Neighbor</label>
+  <!--Version
+  2.8.0 First version
+  2.8.1 Fixed error in dedup
+  3.0.0 Fixed missing identity
+  3.0.1 Added better extraction of the neigbhor
+  3.0.2 Added identity
+  3.3.0 Changed from table to fields
+  3.7.0 Added dashboard version
+  3.7.1 Fixed transaction due to rsyslog
+  3.7.2 Added DNS for interface
+  3.7.3 Fixed smal typo
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      script=neighbor
+      | transaction nid host maxspan=1s
+      | eval host_name=coalesce(identity,host)
+      | dedup host nid
+      | lookup dnslookup clientip as address OUTPUT clienthost as remote_dns
+      | rename interface as local_if, interface_name as remote_if, address as remote_ip
+      | search 
+        host="$Host$"
+        local_if="$Local_if$"
+      | fields host host_name local_if remote_ip remote_dns remote_if platform mac_address board
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-60m@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data host_name
+          | eval info=host_name."-".data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+    <input type="dropdown" token="Local_if">
+      <label>Interface</label>
+      <search base="base_search">
+        <query>
+          | eval data=local_if
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <search base="base_search">
+          <query>
+            | fillnull value="-" 
+            | eval remote_dev=remote_ip." (".remote_dns.")-".mac_address
+            | table host host_name local_if remote_dev remote_if platform board
+          </query>
+        </search>
+        <option name="count">50</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="host">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="board">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="host_name">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="platform">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="remote_if">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="local_if">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="remote_dev">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

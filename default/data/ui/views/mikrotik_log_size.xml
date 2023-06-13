@@ -1,0 +1,102 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik Log Size</label>
+  <description>Show how much each module uses of disk spaces in bytes on the Splunk server</description>
+  <!--Version
+  3.0.0 First version
+  3.1.0 Added sort by and hostname
+  3.2.1 Added some info
+  3.3.0 Changed from table to feilds
+  3.7.0 Added dashboard version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      host=$Host$
+      | eval len=len(_raw),
+             host_name=coalesce(identity,host)
+      | eval module=if(module="script",module."-".script,module)
+      | fields _time len module host host_name
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <choice value="*">Any</choice>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats sum(len) as bytes by data host_name
+          | eval bytes=round(bytes$size$,1),
+                 info=host_name."-".data." (".bytes.")"
+          | sort -bytes
+        </query>
+      </search>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="size">
+      <label>Size</label>
+      <choice value="/1">Bytes</choice>
+      <choice value="/1024">KB</choice>
+      <choice value="/1024/1024">MB</choice>
+      <choice value="/1024/1024/1024">GB</choice>
+      <choice value="/1024/1024/1024/1024">TB</choice>
+      <default>/1024/1024</default>
+    </input>
+    <input type="radio" token="Sort">
+      <label>Sort by</label>
+      <choice value="module">Module</choice>
+      <choice value="host">Host</choice>
+      <default>module</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <search base="base_search">
+          <query>
+            | eval len=len$size$
+            | eval host=host_name."-".host
+            | timechart  limit=0 sum(len) AS bytes by $Sort$
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="height">500</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <search base="base_search">
+          <query>
+            | eval host=host_name."-".host
+            | chart sum(len) AS bytes by $Sort$
+            | eval bytes=round(bytes$size$,1)
+          </query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="height">500</option>
+      </chart>
+    </panel>
+  </row>
+</form>

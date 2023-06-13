@@ -1,0 +1,188 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik Interface Changes</label>
+  <!--Version 
+  2.8.0
+  2.8.1 Fixed sorting
+  2.9.0 Added identity
+  3.0.0 Fixed missing identity
+  3.3.0 Change table format
+  3.3.1 Changed from table to fields
+  3.7.0 Added dashboard version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      module=interface
+      | fillnull value="-"
+      | search 
+        host="$Host$"
+        int="$Int$"
+        change="$Change$"
+        speed="$Speed$"
+        duplex="$Duplex$"
+      | eval host_name=coalesce(identity,host)
+      | fields _time host host_name int change speed duplex
+      | sort -_time
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data host_name
+          | eval info=host_name."-".data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Int">
+      <label>Interface</label>
+      <search base="base_search">
+        <query>
+          | eval data=int
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Change">
+      <label>Change</label>
+      <search base="base_search">
+        <query>
+          | eval data=change
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Speed">
+      <label>Speed</label>
+      <search base="base_search">
+        <query>
+          | eval data=speed
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Duplex">
+      <label>Duplex</label>
+      <search base="base_search">
+        <query>
+          | eval data=duplex
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Up</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search change=up
+            | timechart count by int limit=10
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="height">150</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Down</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search change=down
+            | timechart count by int limit=10
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="height">150</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search base="base_search"></search>
+        <option name="count">50</option>
+        <option name="wrap">true</option>
+        <format type="color" field="host">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="host_name">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="int">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="change">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="speed">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="duplex">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

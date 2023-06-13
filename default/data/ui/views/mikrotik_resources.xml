@@ -1,0 +1,121 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik Resources</label>
+  <description>Data in percent of used resources</description>
+  <!--Version 
+  2.4.0
+  2.5.0
+  2.6.1 Added more disk info
+  2.7.1 Added number to host
+  2.9.0 Added identity
+  2.9.1 Added option to select CPU/Disk/Memory
+  3.0.0 Fixed missing identity
+  3.0.1 Added minspan=5m
+  3.1.0 Added Sector Writes
+  3.7.0 Change sector write view, fixed time span
+  3.7.1 Added dashboard version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <fieldset submitButton="false">
+    <input type="time">
+      <label>Time Span</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search>
+        <query>
+          `index`
+          sourcetype=mikrotik
+          module=script
+          script=resource
+          | eval identity=coalesce(identity,host)
+          | eval data=host
+          | stats count by data identity
+          | eval info=identity."-".data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="checkbox" token="What">
+      <label>What</label>
+      <choice value="avg(cpu_load) as %cpu">CPU</choice>
+      <choice value="avg(percent_memory) as %memory">Memmory</choice>
+      <choice value="avg(percent_hdd_space) as %disk">Disk</choice>
+      <default>avg(cpu_load) as %cpu,avg(percent_memory) as %memory,avg(percent_hdd_space) as %disk</default>
+    </input>
+    <input type="dropdown" token="Span">
+      <label>Time Span</label>
+      <choice value="">Default</choice>
+      <choice value="span=1m">1 min</choice>
+      <choice value="span=5m">5 min</choice>
+      <choice value="span=10m">10 min</choice>
+      <choice value="span=1h">1 hour</choice>
+      <choice value="span=2h">2 hour</choice>
+      <choice value="span=1d">1 day</choice>
+      <default></default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <search>
+          <query>
+            `index`
+            sourcetype=mikrotik
+            module=script
+            script=resource
+            host="$Host$"
+            | eval percent_memory=(total_memory-free_memory)*100/total_memory,
+                   percent_hdd_space=(total_hdd_space-free_hdd_space)*100/total_hdd_space,
+                   host=coalesce(identity,host)
+            | timechart minspan=5m $Span$ $What$ by host
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.lineWidth">5</option>
+        <option name="height">600</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Sector Writes (Best viewed viewed with span=2h)</title>
+      <chart>
+        <search>
+          <query>
+            `index`
+            sourcetype=mikrotik
+            module=script
+            script=resource
+            host="$Host$"
+            | streamstats current=f last(write_sect_total) as prev by host
+            | eval diff=prev - write_sect_total
+            | eval diff=if(diff&lt;0,0,diff)
+            | eval host=coalesce(identity,host)
+            | timechart $Span$ sum(diff) by host
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.lineWidth">5</option>
+        <option name="height">600</option>
+      </chart>
+    </panel>
+  </row>
+</form>

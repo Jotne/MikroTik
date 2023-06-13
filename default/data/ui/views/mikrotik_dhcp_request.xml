@@ -1,0 +1,322 @@
+<form version="3.9.0" theme="dark">
+  <label>MikroTik DHCP requests</label>
+  <!--Version 
+  2.4.0
+  2.5.1 Change to "Coalesce"
+  2.5.1 Moved more to base search
+  2.7.1 Changed "MikroTik DHCP request" to use stats and fixed host flaw and maxspan in trnsaction
+  2.7.2 Changed to base search
+  2.8.1 Added color and more lines
+  2.9.0 Added identity
+        Fixed duplicate entity
+        Cleaned up table information
+  3.0.0 Fixed missing identity
+  3.1.0 Added more info about DHCP debug info
+  3.1.1 Added DHCP server info
+  3.3.0 Changed from table to fields
+  3.7.0 Added Parameter List
+  3.7.1 Added version information
+  3.7.2 Addes Message Type
+  3.8.0 Hide parameter list
+  3.8.1 Change transaction to 100ms
+  3.8.2 Set dropdown to request as default
+  3.9.0 New layout that does not need debug mode
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2023 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      module=dhcp
+      info1=info
+      assigned OR deassigned
+      | eval identity=coalesce(identity,host)
+      | rex "MikroTik:\s(?&lt;dhcp_server&gt;\S+)\s(?&lt;status&gt;(deassigned|assigned))\s(?&lt;ip&gt;\S+)\s\S+\s(?&lt;mac&gt;\S+)(\s(?&lt;device_id&gt;.*))?"
+      | fillnull value="-"
+      | search
+        host =  $Host$
+        dhcp_server = $dhcpserver$
+        status = $Status$
+        ip = $IP$
+        device_id = "$Deviceid$"
+        mac = $Mac$
+      | fields _time identity host dhcp_server status ip device_id mac
+      | sort -_time
+    </query>
+  </search>
+  <search id="base_search2">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      module=dhcp
+      got
+      info1=info 
+      | rex "MikroTik:\sdhcp-client on (?&lt;interface&gt;\S+)\sgot IP address\s(?&lt;ip&gt;\S+)"
+      | eval identity=coalesce(identity,host)
+      | fillnull value="-"
+      | fields _time identity host ip interface
+    </query>
+    <earliest>$Time2.earliest$</earliest>
+    <latest>$Time2.latest$</latest>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data identity
+          | eval info=identity."-".data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="dhcpserver">
+      <label>DHCP server</label>
+      <search base="base_search">
+        <query>
+          | eval data=dhcp_server
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Status">
+      <label>Status</label>
+      <search base="base_search">
+        <query>
+          | eval data=status
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="IP">
+      <label>IP</label>
+      <search base="base_search">
+        <query>
+          | eval data=ip
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Deviceid">
+      <label>Device ID</label>
+      <search base="base_search">
+        <query>
+          | eval data=device_id
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Mac">
+      <label>MAC</label>
+      <search base="base_search">
+        <query>
+          | eval data=mac
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <search base="base_search">
+          <query>
+            | timechart count by $SortBy$
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="height">460</option>
+      </chart>
+    </panel>
+    <panel>
+      <input type="dropdown" token="SortBy">
+        <label>Sort By</label>
+        <choice value="host">Host</choice>
+        <choice value="dhcp_server">DHCP server</choice>
+        <choice value="status">Status</choice>
+        <choice value="ip">IP</choice>
+        <choice value="device_id">Device ID</choice>
+        <choice value="mac">MAC</choice>
+        <default>dhcp_server</default>
+      </input>
+      <chart>
+        <search base="base_search">
+          <query>
+            | stats count by $SortBy$
+          </query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="height">400</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>DHCP server giving out IP</title>
+      <table>
+        <search base="base_search">
+          <query>
+            | stats count latest(_time) as latest_request by identity host dhcp_server status ip device_id mac
+            | convert ctime(latest_request)
+            | lookup dnslookup clientip as ip OUTPUT clienthost as dns
+            | table identity host latest_request dhcp_server status ip device_id dns mac count
+            | sort -latest_request
+          </query>
+        </search>
+        <option name="count">30</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="identity">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="host">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="dhcp_server">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="status">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="ip">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="device_id">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="dns">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="mac">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Local interface gets IP address from DHCP request</title>
+      <input type="time" token="Time2">
+        <label></label>
+        <default>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <input type="dropdown" token="Host2">
+        <label>Host</label>
+        <search base="base_search2">
+          <query>
+          | eval data=host
+          | stats count by data identity
+          | eval info=identity."-".data." (".count.")"
+          | sort -count
+        </query>
+        </search>
+        <choice value="*">Any</choice>
+        <fieldForLabel>info</fieldForLabel>
+        <fieldForValue>data</fieldForValue>
+        <default>*</default>
+      </input>
+      <table>
+        <search base="base_search2">
+          <query>
+            | lookup dnslookup clientip as ip OUTPUT clienthost as dns
+            | table _time identity host ip dns interface
+          </query>
+        </search>
+        <option name="count">30</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="identity">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="host">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="ip">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="interface">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="dns">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

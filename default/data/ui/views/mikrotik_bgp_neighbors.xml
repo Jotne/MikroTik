@@ -1,0 +1,146 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik BGP Neighbors</label>
+  <!--Version
+  3.7.0 First version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      script=bgp
+      host="$Host$"
+      remote_address="$Address$"
+      | eval host_name=coalesce(identity,host)
+      | rex "local\.capabilities=(?&lt;local_capabilities&gt;.*?);local\.eor.*?remote.capabilities=(?&lt;remote_capabilities&gt;.*?);remote.eor"
+      | makemv delim=";" local_capabilities
+      | makemv delim=";" remote_capabilities
+      | sort -_time
+      | fields status _time host_name host id name local_address local_* remote_* output_*
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data host_name
+          | eval info=host_name."-".data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Address">
+      <label>Remote Address</label>
+      <search base="base_search">
+        <query>
+          | eval data=remote_address
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <search base="base_search">
+          <query>
+              | where isnotnull(remote_as)
+            | timechart count by remote_address
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="height">400</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="checkbox" token="Status">
+        <label>Status</label>
+        <choice value="up">Up</choice>
+        <choice value="down">Down</choice>
+        <default>up,down</default>
+      </input>
+      <table>
+        <search base="base_search">
+          <query>
+            | dedup host id
+            | eval status=if(isnotnull(remote_as),"up","down")
+            | search status IN ($Status$)
+            | table status _time host_name host id name local_address local_* remote_* output_*
+          </query>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="status">
+          <colorPalette type="map">{"up":#118832,"down":#D41F1F}</colorPalette>
+        </format>
+        <format type="color" field="host_name">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="name">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="local_address">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="local_as">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="local_id">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="remote_address">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="remote_as">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="remote_id">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

@@ -1,0 +1,125 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik Interface Traffic</label>
+  <!--Version 
+  2.8.1 First version
+  2.9.0 Added identity
+  2.9.1 USe correct interface traffic
+  3.0.0 Fixed missing identity
+  3.3.0 Changed from table to fields
+  3.7.0 Added dashboard version
+  3.8.0 Rounded results
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      script=if_traffic
+      host="$Host$"
+      name="$Interface$"
+      | eval host_name=coalesce(identity,host)
+      | sort 0 _time
+      | streamstats current=f  last(rx_byte) as rx_prev last(tx_byte) as tx_prev by name
+      | eval 
+        rx=if(rx_prev&gt;rx_byte,rx_byte,(rx_byte-rx_prev))$size$,
+        tx=if(tx_prev&gt;tx_byte,tx_byte,(tx_byte-tx_prev))$size$
+      | rename name as interface
+      | fillnull value="-" comment
+      | fields _time host interface host_name rx tx comment
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data host_name
+          | eval info=host_name."-".data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Interface">
+      <label>Interface</label>
+      <search base="base_search">
+        <query>
+          | eval data=interface
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>data</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="radio" token="Sort">
+      <label>Separate by</label>
+      <choice value="interface">Interface</choice>
+      <choice value="_aggregation">RX/TX</choice>
+      <default>interface</default>
+    </input>
+    <input type="dropdown" token="size">
+      <label>Size</label>
+      <choice value="">Bytes</choice>
+      <choice value="/1024">KB</choice>
+      <choice value="/1024/1024">MB</choice>
+      <choice value="/1024/1024/1024">GB</choice>
+      <choice value="/1024/1024/1024/1024">TB</choice>
+      <default>/1024/1024</default>
+    </input>
+    <input type="dropdown" token="Span">
+      <label>Time Span</label>
+      <choice value="">Default</choice>
+      <choice value="span=5m">5 min</choice>
+      <choice value="span=1h">1 hour</choice>
+      <choice value="span=1d">1 day</choice>
+      <default></default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <search base="base_search">
+          <query>
+            | eval info=interface."(".comment.")"
+            | timechart minspan=5m  eval(round(sum(rx),2)) as RX eval(round(sum(tx),2)) as TX by info limit=0
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="charting.lineWidth">4</option>
+        <option name="height">1000</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">1</option>
+        <option name="trellis.scales.shared">0</option>
+        <option name="trellis.size">large</option>
+        <option name="trellis.splitBy">$Sort$</option>
+      </chart>
+    </panel>
+  </row>
+</form>

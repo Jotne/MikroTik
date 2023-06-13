@@ -1,0 +1,150 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik CMD History</label>
+  <description>Needs routerOS &gt;= v7 (new commands are only shown every 5 min)</description>
+  <!--Version
+  3.4.0 First version
+  3.4.1 Fixed sorting
+  3.7.0 Added dashboard version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      module=script
+      host=$Host$
+      | rex ";time.*?;undo=(?&lt;undo&gt;.*)"
+      | rex mode=sed "s/;time.*// s/;undoable=true// s/;time.*// s/.id.*?;redo=//g"
+      | transaction host startswith="StartCMD" endswith="EndCMD" maxspan=1s
+      | rex mode=sed "s/script,info MikroTik: //g s/StartCMD\n// s/EndCMD// "
+      | eval host_name=coalesce(identity,host)
+      | eval id=mvindex(id, 0)
+      | rename _raw as cmd
+      | search by="$User$"
+        action="$Action$"
+      | rex mode=sed field=id "s/\*//"
+      | bin span=2m _time
+      | eval dec_id=tonumber(id,16)
+      | sort -_time -dec_id
+      | fields _time host host_name id by action cmd undoable undo
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data host_name
+          | eval info=host_name."-".data."(".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="User">
+      <label>User</label>
+      <search base="base_search">
+        <query>
+          | eval data=by
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Action">
+      <label>Action</label>
+      <search base="base_search">
+        <query>
+          | eval data=action
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <search base="base_search">
+          <query>
+            | timechart count by action limit=30
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="height">400</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search base="base_search">
+          <query>
+            | table _time host host_name id by action cmd undoable undo
+          </query>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="host">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="host_name">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="id">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="by">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="action">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="undoable">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

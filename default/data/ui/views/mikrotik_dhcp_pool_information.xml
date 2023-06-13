@@ -1,0 +1,101 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik DHCP pool information</label>
+  <description>Collected using Scripting. Usage in percent. If you add static release outside the pool,but within the subnet, i will give wrong percent usage.</description>
+  <!--Version 
+  2.4.0
+  2.5.0
+  2.7.0
+  2.9.0 Added identity
+  3.0.0 Fixed missing identity
+  3.1.0 Added limit=0
+  3.1.1 Added pool selection
+  3.1.2 Added information about static release.
+  3.3.0 Changed from table to fields
+  3.4.0 Added span=1h to get more details
+  3.7.0 Added dashboard version
+  3.7.1 change dashboard tag from host to host_name
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik 
+      module=script
+      script=pool
+      pool="$Pool$"
+      | eval percent=used*100/total,
+             host_name=coalesce(identity,host)
+      | fields _time host used total percent pool host_name
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label>Time span</label>
+      <default>
+        <earliest>-30d@d</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data host_name
+          | eval info=host_name."-".data
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Pool">
+      <label>Pool (percent used)</label>
+      <search base="base_search">
+        <query>
+          | eval data=pool
+          | stats latest(percent) as percent by data
+          | eval percent=round(percent,1)
+          | eval info=data." (".percent.")"
+          | sort -percent
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <search base="base_search">
+          <query>
+             search
+               host="$Host$"
+             | eval info=pool."(".host_name.")"
+             | timechart span=1h limit=0 max(percent) by info
+           </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="height">600</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">1</option>
+        <option name="trellis.scales.shared">0</option>
+        <option name="trellis.size">large</option>
+      </chart>
+    </panel>
+  </row>
+</form>

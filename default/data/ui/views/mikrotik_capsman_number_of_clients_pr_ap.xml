@@ -1,0 +1,83 @@
+<form version="3.8" theme="dark">
+  <label>Mikrotik CAPsMAN Number of Clients pr AP</label>
+  <!--Version 
+  3.1.0 First version
+  3.3.0 Changed from table to fields
+  3.7.0 Added dashboard version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      script="caps-man"
+      NOT capsregistered
+      host="$Host$"
+      ap="$AP$"
+      | eval host_name=coalesce(identity,host)
+      | fields _time host host_name ap counter
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data host_name
+          | eval info=host_name."-".data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="AP">
+      <label>AP</label>
+      <search base="base_search">
+        <query>
+          | eval data=ap
+          | stats max(counter) as count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <search base="base_search">
+          <query>
+            | timechart max(counter) by ap
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.lineWidth">5</option>
+        <option name="height">500</option>
+      </chart>
+    </panel>
+  </row>
+</form>

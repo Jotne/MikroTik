@@ -1,0 +1,157 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik PPPoE Connection</label>
+  <description>Shows PPPoE connections/error</description>
+  <!--Version 
+  3.0.0 First version
+  3.2.0 Added logout and added client_id info. Fixed sorting
+  3.3.0 Changed from table to fields
+  3.7.0 Added dashboard version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      module=pppoe
+      eventtype="pppoe_log*"
+      host="$Host$"
+      user="$User$"
+      | eval 
+        host_name=coalesce(identity,host),
+        logged=if(eventtype="pppoe_login","in","out")
+      | rex "from (?&lt;client_id&gt;.*)"
+      | fields _time host host_name user src_ip time rcv_bytes sent_bytes eventtype logged client_id
+      | sort 0 -_time
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data host_name
+          | eval info=host_name."-".data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="User">
+      <label>User</label>
+      <search base="base_search">
+        <query>
+          | eval data=user
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Logged inn users</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search logged="in"
+            | timechart count by user limit=10
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="height">200</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Logged out users</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search logged="out"
+            | timechart count by user limit=10
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="height">200</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search base="base_search">
+          <query>
+            | eval sent=case( 
+              sent_bytes>=(1024*1024*1024*1024),round(sent_bytes/(1024*1024*1024*1024),0)." TB",
+              sent_bytes>=(1024*1024*1024),round(sent_bytes/(1024*1024*1024),0)." GB",
+              sent_bytes>=(1024*1024),round(sent_bytes/(1024*1024),0)." MB",
+              sent_bytes>=1024,round(sent_bytes/1024,0)." KB",
+              1=1,sent_bytes." B")
+            | eval recieved=case( 
+              rcv_bytes>=(1024*1024*1024*1024),round(rcv_bytes/(1024*1024*1024*1024),0)." TB",
+              rcv_bytes>=(1024*1024*1024),round(rcv_bytes/(1024*1024*1024),0)." GB",
+              rcv_bytes>=(1024*1024),round(rcv_bytes/(1024*1024),0)." MB",
+              rcv_bytes>=1024,round(rcv_bytes/1024,0)." KB",
+              1=1,rcv_bytes." B")
+            | eval time=tostring(time, "duration")
+            | table _time host user logged src_ip client_id time recieved sent
+          </query>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="host">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="user">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="src_ip">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="logged">
+          <colorPalette type="map">{"in":#53A051,"out":#DC4E41}</colorPalette>
+        </format>
+        <format type="color" field="client_id">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

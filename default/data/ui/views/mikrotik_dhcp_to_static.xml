@@ -1,0 +1,129 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik DHCP to Static</label>
+  <description>See below on how to enable static dhcp leases</description>
+  <!--Version
+  2.9.0 First version
+  3.0.0 Fixed missing identity
+  3.0.1 Added DHCP name
+  3.3.0 Changed from table to fields
+  3.3.1 Fixed html info formatting
+  3.6.0 Updated script
+  3.7.0 Added DHCP server info
+  3.7.1 Added dashboard version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      script=dhcp_static
+      host="$Host$"
+      | rename name as dhcp_name
+      | eval host_name=coalesce(identity,host)
+      | lookup dnslookup clientip as IP OUTPUT clienthost as dns_name
+      | rename IP as client_ip, MAC as mac
+      | fields _time host host_name client_ip dns_name dhcp_name mac server
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-30d@d</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data host_name
+          | eval info=host_name."-".data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <search base="base_search">
+          <query>
+            | timechart count by client_ip limit=10
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="height">200</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search base="base_search">
+          <query>
+            | eval host=host_name." ".host
+            | rename server as dhcp_server
+            | table _time host dhcp_server client_ip dns_name dhcp_name mac
+          </query>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="host">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="dhcp_server">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <html>
+<h1>DHCP -&gt; static leaeses</h1>
+<p>To make sure every user have the same IP all the time, you can convert DHCP leases to static lease.</p>
+<p>
+          <strong>Setup</strong> Go to:<br/>
+          <br/>IP -&gt; DHCP Server -&gt; Select DHCP server -&gt; Script<br/>
+          <br/>
+          <strong>Add the following script to all DHCP servers</strong>
+        </p>
+<p>
+          <strong>---------------------------------------------------</strong>
+        </p>
+<p># Created Jotne 2020 v1.4<br/>#<br/># This scripts converts all DHCP release to static automatically<br/># It should run on all routerOS version</p>
+<p>/ip dhcp-server lease<br/># Test if this is a Bound session and the lease is a dynamic one. Do not change older reservation<br/>:if (($leaseBound=1) &amp;&amp; ([find where dynamic mac-address=$leaseActMAC]!="")) do={</p>
+<p># Get the lease number<br/>:local Lease [find mac-address=$leaseActMAC]<br/>
+          <br/># Get date and time<br/>:local date [/system clock get date]<br/>:local time [/system clock get time]<br/>
+          <br/># Make the lease static <br/>make-static $Lease</p>
+<p># Get host name<br/>:local Name [get $Lease host-name ] <br/>
+          <br/># Add date and time as a comment to show when it was seen first time <br/>comment comment="$date $time $Name" $Lease<br/>
+          <br/># Send a message to the log <br/>:log info message="script=dhcp_static server=$leaseServerName IP=$leaseActIP MAC=$leaseActMAC name=$Name"</p>
+<p>}</p>
+
+        </html>
+    </panel>
+  </row>
+</form>

@@ -1,0 +1,143 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik WireGuard Errror</label>
+  <description>If a Peer has an endpoint IP it will try to reach that and give error if not able to.</description>
+  <!--Version 
+  3.7.0 First version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  # v3.7
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      module=wireguard
+      host="$Host$"
+      interface="$Interface$"
+      public_key="$Public_Key$"
+      | eval host_name=coalesce(identity,host)
+      | eval host_id=host_name."-".host
+      | fields _time host interface public_key error host_name host_id
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data host_name
+          | eval info=host_name."-".data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Interface">
+      <label>Interface</label>
+      <search base="base_search">
+        <query>
+          | eval data=interface
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Public_Key">
+      <label>Public Key</label>
+      <search base="base_search">
+        <query>
+          | eval data=public_key
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <input type="dropdown" token="Graph">
+        <label>Graph by</label>
+        <choice value="host_id">Host</choice>
+        <choice value="interface">Interface</choice>
+        <choice value="public_key">Public Key</choice>
+        <choice value="error">Error</choice>
+        <default>host_id</default>
+      </input>
+      <chart>
+        <search base="base_search">
+          <query>
+            | timechart count by $Graph$
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">all</option>
+        <option name="height">400</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search base="base_search">
+          <query>
+            | sort -_time
+            | table _time host_id interface public_key error</query>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="host_id">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="interface">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="public_key">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="error">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

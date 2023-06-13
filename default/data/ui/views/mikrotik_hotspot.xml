@@ -1,0 +1,293 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik Hotspot login/logout information</label>
+  <description>Shows client: log in  (chap/cookie/trail user) log out (keepalive/timeout/user request/traffic limit/admin reset) log in failed</description>
+  <!--Version 
+  2.4.0
+  2.5.0
+  2.7.1 Changed to base search
+  2.9.0 Added identity
+  3.0.0 Fixed missing identity
+  3.3.0 Changed from table to fields
+  3.7.0 Added dashboard version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      module=hotspot
+      eventtype IN (hotspot_login_*,hotspot_logged_*)
+      user="$user$"
+      | eval host_name=coalesce(identity,host)
+      | transaction maxpause=2s user
+      | search src_ip="$IP$"
+      | fields _time user src_ip eventtype host_name
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label>Time frame</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="user">
+      <label>user</label>
+      <search base="base_search">
+        <query>
+          | eval data=user
+          | stats count by data host_name
+          | eval info=host_name."-".data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="IP">
+      <label>IP Address</label>
+      <search base="base_search">
+        <query>
+          | eval data=src_ip
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel depends="$panel_show11$">
+      <title>1.1 Login https_chap user</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search
+              eventtype=hotspot_logged_in
+              eventtype=hotspot_login_http-chap
+            | timechart count by user limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show11">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show11"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart.stackMode">stacked</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show12$">
+      <title>1.2 Login cookie user</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search
+              eventtype=hotspot_logged_in
+              eventtype=hotspot_login_cookie
+            | timechart count by user limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show12">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show12"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart.stackMode">stacked</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show13$">
+      <title>1.3 Login trail user</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search
+              eventtype=hotspot_logged_in
+              eventtype=hotspot_login_trail
+            | eval user=substr(user , 3, 99)
+            | timechart count by user limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show13">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show13"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart.stackMode">stacked</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show21$">
+      <title>2.1 Logout keepalive timeout (time out due to inactivity)</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search 
+              eventtype=hotspot_logged_out_keepalive_timeout
+            | timechart count by user limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show21">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show21"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart.stackMode">stacked</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show22$">
+      <title>2.2 Logout session timeout (no more online time for user)</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search
+              eventtype=hotspot_logged_out_session_timeout
+            | timechart count by user limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show22">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show22"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart.stackMode">stacked</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show23$">
+      <title>2.3 Logout user request (user logged himself out)</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search
+              eventtype=hotspot_logged_out_user_request
+            | timechart count by user limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show23">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show23"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart.stackMode">stacked</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show24$">
+      <title>2.4 Logout traffic limit reachedt (no more data left for user)</title>
+      <chart>
+        <search>
+          <query>
+            | search
+              eventtype=hotspot_logged_out_traffic_limit_reached
+            | timechart count by user limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show24">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show24"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart.stackMode">stacked</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show25$">
+      <title>2.5 Logout admin reset (admin logged out the user)</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search
+              eventtype=hotspot_logged_out_admin_reset
+            | timechart count by user limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show25">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show25"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart.stackMode">stacked</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show31$">
+      <title>3.1 Login failed (invalid username or password)</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search 
+              eventtype=hotspot_login_failed_user_or_pass
+            | timechart count by user limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show31">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show31"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart.stackMode">stacked</option>
+      </chart>
+    </panel>
+  </row>
+</form>

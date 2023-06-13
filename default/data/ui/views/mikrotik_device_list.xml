@@ -1,0 +1,225 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik Device List</label>
+  <!--Version
+  2.4.1 Added sparkline and set to 24 hour
+  2.5.0
+  2.6.1 Added better sparkline
+  2.6.2 Added identity
+  2.7.1 Added Time picker for "MikroTik Device List"
+  2.8.0 Added board_name
+  2.9.0 Added itentity
+  3.0.0 Fixed extraction from ROS v7
+  3.0.1 Fixed missing identity
+  3.0.2 Added KV store auto update.
+  3.1.0 Added update to KV system
+  3.3.0 Added firmware info
+  3.7.0 Added dashboard version
+  3.7.1 Removed output lookup, not needed
+  3.7.2 Added script version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="KV_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      module=script
+      script=sysinfo
+      | dedup host
+      | rex "version=\"(?&lt;version&gt;[^\"]*)\" board-name=\"(?&lt;board_name&gt;[^\"]*)\" model=\"(?&lt;model&gt;[^\"]*)\" serial=(?&lt;serial&gt;\S*) identity=\"(?&lt;identity&gt;[^\"]*)\"" 
+      | table  host identity serial model board_name version
+      | fillnull value="-"
+      | inputlookup append=true device_table
+      | dedup host identity
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel depends="$panel_show0$">
+      <title>Test if fasttrack is disabled</title>
+      <table>
+        <title>To get "Accouning Traffic" and "mangle rules" to work, this need to be turned off</title>
+        <search>
+          <query>
+            `index`
+            sourcetype=mikrotik
+            module=script
+            script=traffic
+            | eval identity=coalesce(identity,host)
+            | stats latest(fasttrack) as fasttrack by host identity
+            | where fasttrack!=0
+          </query>
+          <earliest>-15m</earliest>
+          <latest>now</latest>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show0">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show0"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="host">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show1$">
+      <title>Routers listed here has to old script</title>
+      <table>
+        <title>Some dashboard my not work correctly (routing needs 4.9)</title>
+        <search>
+          <query>
+            `index`
+            sourcetype=mikrotik
+            script=version
+            | eval identity=coalesce(identity,host)
+            | stats latest(ver) as ver by host identity
+            | where ver&lt;4.9
+          </query>
+          <earliest>-15m</earliest>
+          <latest>now</latest>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show1">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show1"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="host">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show2$">
+      <title>NTP are not running on host listed below.</title>
+      <table>
+        <title>Time may not be correct and date of logs may be out of sync</title>
+        <search>
+          <query>
+            `index`
+            sourcetype=mikrotik
+            earliest=-1@h latest=now
+            script=ntp
+            | eval identity=coalesce(identity,host)
+            | stats latest(status) as status by host identity
+            | search status!=synchronized
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show2">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show2"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="count">15</option>
+        <option name="dataOverlayMode">heatmap</option>
+        <option name="drilldown">cell</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="host">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>List of devices</title>
+      <table>
+        <search>
+          <query>
+            `index`
+            sourcetype=mikrotik
+            module=script
+            script=sysinfo OR script=version
+            | transaction host maxspan=5m 
+            | eval identity=coalesce(identity,host)
+            | rex "version=\"(?&lt;RouterOS&gt;[^\"]*)\" board-name=\"(?&lt;board_name&gt;[^\"]*)\" model=\"(?&lt;model&gt;[^\"]*)\" serial=(?&lt;serial&gt;\S*) identity=\"(?&lt;identity&gt;[^\"]*)\"" 
+            | fillnull value="-"
+            | stats sparkline count latest(RouterOS) as RouterOS by host identity serial model board_name factory_firmware current_firmware upgrade_firmware ver
+            | rename sparkline AS "uptime" ver AS script_ver
+            | search NOT factory_firmware=-
+            | table host identity serial model board_name RouterOS count uptime factory_firmware current_firmware upgrade_firmware script_ver</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="RouterOS">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="model">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="board_name">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="factory_firmware">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="current_firmware">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="upgrade_firmware">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="script_ver">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format field="uptime" type="sparkline">
+          <option name="lineColor">#5379af</option>
+          <option name="fillColor">#ccddff</option>
+          <option name="lineWidth">2</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

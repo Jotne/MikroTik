@@ -1,0 +1,116 @@
+Information:
+https://forum.mikrotik.com/viewtopic.php?t=179960
+
+Rule name logging
+==================
+
+Format:
+x_y_z
+x=<where and direction>
+y=<what to do>
+z=<name/info>
+
+Example
+-------
+Filter Rule Forard allow HTTP
+FF_A_Http
+
+Filter Route Input Drop ICMP
+FI_D_Icmp
+
+Nat HTTP
+ND_DE_Http
+
+Mangle Mark HTTP packets
+MF_MP_Http
+
+
+Filter Rule
+------------------
+x=
+FF Filter Forward
+FI Filter Input
+FO Filter Output
+FX Filter Custom list
+
+y=
+A  Accept
+AD Add to dst address list
+AS Add to dst address list
+D  Dropp
+F  Fast track
+J  Jump
+L  Log
+P  Passthrough
+RJ Reject
+RT Return
+T  Tarpit
+
+Nat Rule
+------------------
+x=
+ND Dest nat
+NS Source nat
+
+y=
+A  Accept
+AD Add to address list
+AS Add to dst address list
+DE Dst-nat
+J  Jump
+L  Log
+M  Masquerade
+N  Netmap
+P  Passthrough
+RE Redirect
+RT Return
+SA same
+S  Src-nat
+
+Raw
+------------------
+x=
+RP Filter Raw Prerouting
+RO Filter Raw Output
+
+y=
+A  Accept
+AD Add to address list
+AS Add to dst address list
+F  Fast track
+D  Dropp
+J  Jump
+L  Log
+N  No track
+P  Passthrough
+RT Return
+
+Mangle
+------------------
+x=
+MF Mangle Forward
+MI Mangle Input
+MP Mangle Postrouing
+MR Mangle Prerouting
+
+y=
+A  Accept
+AD Add to address list
+AS Add to dst address list
+CD Change DSCP
+CM Change MSS
+CT Change TTL
+CL Clear DF
+F  Fast track
+J  Jump
+L  Log
+MC Marc connection
+MP Mark packets
+MR Mark routing
+P  Passthrough
+RT Return
+RO Route
+S  Set proirity
+SP Sniff PC
+ST Sniff TZSP
+SI Strip IPv4 options

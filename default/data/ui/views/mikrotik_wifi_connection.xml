@@ -1,0 +1,218 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik Wifi connection</label>
+  <description>Shows clients connects or disconnect to the Wifi</description>
+  <!--Version 
+  2.4.0
+  2.5.0
+  2.7.1 Cleaned base search
+  2.9.0 Added identity
+  3.0.0 Fixed missing identity
+  3.0.1 Autohide panels with no data
+  3.1.0 Added name_id for mac
+  3.3.0 Changed for table to fields
+  3.7.0 Added dashboard version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      module=wireless
+      eventtype=wifi_connected
+      OR eventtype=wifi_disconnected_*
+      host="$Host$"
+      mac="$Client$"
+      int="$Interface$"
+      | eval host_name=coalesce(identity,host)
+      | fields _time host mac int eventtype host_name name_id
+    </query>
+  </search>
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time">
+      <label>Time frame</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data host_name
+          | eval info=host_name."-".data." (".count.")"
+          | sort - count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Client">
+      <label>Client</label>
+      <search base="base_search">
+        <query>
+          | eval data=mac
+          | stats count by data name_id
+          | eval info = coalesce(name_id."-".data,data)." (".count.")"
+          | dedup data
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Interface">
+      <label>Interface/Radio</label>
+      <search base="base_search">
+        <query>
+          | eval data=int
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel depends="$panel_show1$">
+      <title>Connected</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search
+              eventtype=wifi_connected
+            | eval mac = coalesce(name_id."-".mac,mac)
+            | timechart count by mac limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show1">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show1"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart.stackMode">stacked</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show2$">
+      <title>Disconnected Data loss</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search
+              eventtype=wifi_disconnected_data_loss
+            | eval mac = coalesce(name_id."-".mac,mac)
+            | timechart count by mac limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show2">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show2"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart.stackMode">stacked</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show3$">
+      <title>Disconnected Disabling</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search
+              eventtype=wifi_disconnected_disabling
+            | timechart count by mac limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show3">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show3"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart.stackMode">stacked</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show4$">
+      <title>Disconnected Station leaving</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search
+              eventtype=wifi_disconnected_station_leaving
+            | timechart count by mac limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show4">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show4"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart.stackMode">stacked</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show5$">
+      <title>Disconnected Unspecified</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search
+              eventtype=wifi_disconnected_unspecified
+            | timechart count by mac limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show5">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show5"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart.stackMode">stacked</option>
+      </chart>
+    </panel>
+  </row>
+</form>

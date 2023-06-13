@@ -1,0 +1,160 @@
+<form version="3.8" theme="dark">
+  <label>MikroTik System Changes</label>
+  <description>Shows who changing what and when</description>
+  <!--Version
+  2.4.1
+  2.5.0
+  2.7.1 Changed "MikroTik System Changes"  to use 30 day and 4 hour span
+  2.7.2 Removed changes to "DHCP leases" in "MikroTik System Changes"
+  2.7.3 Canged to base search
+  2.8.1 Fixed Span and removed time scale
+  2.9.0 Added identity
+  3.0.0 Fixed missing identity
+  3.0.1 Added table information
+  3.2.1 Fixed time
+  3.3.0 Changed from fields to table
+  3.7.0 Added dashboard version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+      `index`
+      sourcetype=mikrotik
+      module=system
+      eventtype=system_change
+      change!="dhcp lease"
+      host="$Host$"
+      user="$User$"
+      action="$Action$"
+      change="$Change$"
+      change!="dhcp lease"
+      | eval host_name=coalesce(identity,host)
+      | fields _time host host_name user action change
+      | sort -_time
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-30d@d</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=host
+          | stats count by data host_name
+          | eval info=host_name."-".data."(".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="User">
+      <label>User</label>
+      <search base="base_search">
+        <query>
+          | eval data=user
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Action">
+      <label>Action</label>
+      <search base="base_search">
+        <query>
+          | eval data=action
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Change">
+      <label>Change</label>
+      <search base="base_search">
+        <query>
+          | eval data=change
+          | stats count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <search base="base_search">
+          <query>
+            | eval info=user."_".action."_".change
+            | timechart count by info limit=30
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="height">600</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search base="base_search">
+          <query>
+            | table _time host host_name user action change
+          </query>
+        </search>
+        <option name="count">100</option>
+        <format type="color" field="host">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="host_name">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="user">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="action">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="change">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

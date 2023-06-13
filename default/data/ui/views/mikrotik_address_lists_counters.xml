@@ -1,0 +1,120 @@
+<form version="3.8" theme="dark">
+  <label>Mikrotik Address Lists counters</label>
+  <!--Version
+  2.7.1 First version
+  2.9.0 Added identity
+  2.9.1 Fixed counters
+  3.0.0 Fixed missing identity
+  3.3.0 Change from table to fields
+  3.7.0 Added dashboard version
+  ######################################################
+  #
+  # Mikrotik Add-On for Splunk
+  #
+  # Copyright (C) 2022 Jotne
+  # All Rights Reserved
+  #
+  ######################################################
+  -->
+  <search id="base_search">
+    <query>
+       `index`
+      sourcetype=mikrotik
+      script=address_lists
+      host="$Host$"
+      list="$Lists$"
+      list="$Free$"
+      | eval total=dynamic+static,
+             host_name=coalesce(identity,host)
+      | fields _time host list static dynamic total host_name
+    </query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="Host">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | transaction _time
+          | dedup host
+          | eval info=host_name."-".host
+          | stats sum(total) as count by info host
+          | eval info=info."(".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Lists">
+      <label>Address Lists</label>
+      <search base="base_search">
+        <query>
+          | eval data=list
+          | stats latest($Type$) as count by data
+          | eval info=data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Span">
+      <label>Time Span</label>
+      <choice value="bins=100">Default</choice>
+      <choice value="span=1m">1 min</choice>
+      <choice value="span=5m">5 min</choice>
+      <choice value="span=10m">10 min</choice>
+      <choice value="span=20m">20 min</choice>
+      <choice value="span=1h">1 hour</choice>
+      <choice value="span=2h">2 hour</choice>
+      <default>span=1h</default>
+    </input>
+    <input type="text" token="Free">
+      <label>Free text Lists</label>
+      <default>*</default>
+      <prefix>*</prefix>
+      <suffix>*</suffix>
+    </input>
+    <input type="radio" token="Type">
+      <label></label>
+      <choice value="static">Stattic</choice>
+      <choice value="dynamic">Dynamic</choice>
+      <choice value="total">Total</choice>
+      <change>
+        <condition value="show_more">
+          <set token="show_details">site site_info</set>
+        </condition>
+        <condition>
+          <set token="show_details">site_info</set>
+        </condition>
+      </change>
+      <default>total</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <search base="base_search">
+          <query>
+            timechart $Span$ avg($Type$) by list
+          </query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.lineWidth">5</option>
+        <option name="height">600</option>
+      </chart>
+    </panel>
+  </row>
+</form>
