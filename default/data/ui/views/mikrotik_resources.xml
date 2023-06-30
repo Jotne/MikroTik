@@ -52,7 +52,7 @@
     <input type="checkbox" token="What">
       <label>What</label>
       <choice value="avg(cpu_load) as %cpu">CPU</choice>
-      <choice value="avg(percent_memory) as %memory">Memmory</choice>
+      <choice value="avg(percent_memory) as %memory">Memory</choice>
       <choice value="avg(percent_hdd_space) as %disk">Disk</choice>
       <default>avg(cpu_load) as %cpu,avg(percent_memory) as %memory,avg(percent_hdd_space) as %disk</default>
     </input>
