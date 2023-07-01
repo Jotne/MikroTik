@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="4.0" theme="dark">
   <label>MikroTik Neighbor</label>
   <!--Version
   2.8.0 First version
@@ -12,6 +12,7 @@
   3.7.2 Added DNS for interface
   3.7.3 Fixed smal typo
   3.9.0 Added discovery type
+  4.0.0 Fixed multivalue fields, sorting and added lldp
   ######################################################
   #
   # Mikrotik Add-On for Splunk
@@ -29,12 +30,24 @@
       | eval host_name=coalesce(identity,host)
       | dedup host nid
       | lookup dnslookup clientip as address OUTPUT clienthost as remote_dns
+      | rex max_match=0 "discovered-by=\"(?&lt;discovered_by&gt;[^\"]+)"
+      | rex max_match=0 "interface=\"(?&lt;interface&gt;[^\"]+)"
+      | eval interface=mvjoin(interface," on ")
       | rename interface as local_if, interface_name as remote_if, address as remote_ip
+      | eval remote_if = if(match(remote_if,"\d\/\d"),replace(remote_if,"/","¤"),remote_if)
+      | eval remote_if = split(remote_if, "/")
+      | eval id=mvrange(-2147483648,(2147483648-mvcount(remote_if))*(-1))
+      | rex field=id mode=sed "s/-//g"
+      | eval remote_if=mvsort(mvzip(id,remote_if,"|"))
+      | rex field=remote_if mode=sed "s/\d+\|//"
+      | eval remote_if=mvjoin(remote_if," on ")
+      | eval remote_if = replace(remote_if,"¤","/")
       | search 
         host="$Host$"
         local_if="$Local_if$"
         discovered_by IN ($Discovered$)
       | fields host host_name local_if remote_ip remote_dns remote_if platform mac_address board discovered_by
+      | sort host local_if
     </query>
   </search>
   <fieldset submitButton="false">
@@ -61,7 +74,7 @@
       <fieldForValue>data</fieldForValue>
     </input>
     <input type="dropdown" token="Local_if">
-      <label>Interface</label>
+      <label>Local Interface</label>
       <search base="base_search">
         <query>
           | eval data=local_if
@@ -77,9 +90,11 @@
     </input>
     <input type="checkbox" token="Discovered">
       <label>Discovered by</label>
-      <choice value="cdp">cdp</choice>
-      <choice value="mndp">mndp</choice>
-      <default>cdp,mndp</default>
+      <choice value="cdp">cdp (local)</choice>
+      <choice value="lldp">lldp (local)</choice>
+      <choice value="mndp">mndp (local/remote)</choice>
+      <default>cdp,lldp,mndp</default>
+      <delimiter> </delimiter>
     </input>
   </fieldset>
   <row>
