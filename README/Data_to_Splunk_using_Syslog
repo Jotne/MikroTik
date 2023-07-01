@@ -1,0 +1,354 @@
+# Collect information from Mikrotik RouterOS
+# Jotne 2023
+# Script name=Data_to_Splunk_using_Syslog
+:log info message="script=version ver=5.2"
+# ----------------------------------
+
+
+# What data to collect.  Set to false to skip the section 
+# ----------------------------------
+:local SystemResource true
+:local SystemInformation true
+:local SystemHealth true
+:local TrafficData true
+:local AccuntData true
+:local uPnP true
+:local Wireless true
+:local AddressLists true
+:local DHCP true
+:local Neighbor true
+:local InterfaceData true
+:local CmdHistory true
+:local CAPsMANN false
+
+:local Routing true
+:local OSPF false
+:local BGP false
+
+:local PPP true
+:local IPSEC true
+
+# Get RouterOS main version (used to run different script on different version)
+:local train [:tonum [:pick [/system resource get version] 0 1]] 
+
+# Collect system resource
+# ----------------------------------
+:if ($SystemResource) do={
+	/system resource
+	:local cpuload [get cpu-load]
+	:local freemem ([get free-memory]/1048576)
+	:local totmem ([get total-memory]/1048576)
+	:local freehddspace ([get free-hdd-space]/1048576)
+	:local totalhddspace ([get total-hdd-space]/1048576)
+	:local up [get uptime]
+	:local sector [get write-sect-total]
+	:log info message="script=resource free_memory=$freemem MB total_memory=$totmem MB free_hdd_space=$freehddspace MB total_hdd_space=$totalhddspace MB cpu_load=$cpuload uptime=$up write-sect-total=$sector"
+}
+
+
+# Make some part only run every hours
+# ----------------------------------
+:global Hour
+:local run false
+:local hour [:pick [/system clock get time] 0 2]
+:if ($Hour != $hour) do={
+	:global Hour $hour
+	:set run true
+}
+
+
+# Get NTP status
+# ----------------------------------
+:local ntpstatus ""
+:if ([:len [/system package find where !disabled and name=ntp]] > 0 or [:tonum [:pick [/system resource get version] 0 1]] > 6) do={
+    :set ntpstatus [/system ntp client get status]
+} else={
+    :if ([:typeof [/system ntp client get last-update-from]] = "nil") do={
+        :set ntpstatus "using-local-clock"
+    } else={
+        :set ntpstatus "synchronized"
+    }
+}
+:log info message="script=ntp status=$ntpstatus" 
+
+
+# Get interface traffic data for all interface
+# ----------------------------------
+:if ($TrafficData) do={
+	:foreach id in=[/interface find] do={
+		:local output "$[/interface print stats as-value where .id=$id]"
+		:set ( "$output"->"script" ) "if_traffic"
+		:log info message="$output"
+	}
+}
+
+
+# Get traffic data v2 (Kid Control)
+# ----------------------------------
+:if ($AccuntData) do={
+	:foreach logline in=[/ip kid-control device find] do={
+		:local output "$[/ip kid-control device get $logline]"
+		:set ( "$output"->"script" ) "kids"
+		:log info message="$output"
+	}
+}
+
+
+# Finding dynmaic lines used in uPnP
+# ----------------------------------
+:if ($uPnP) do={
+	:foreach logline in=[/ip firewall nat find where dynamic=yes and comment~"^upnp "] do={
+		:local output "$[/ip firewall nat print as-value from=$logline]"
+		:set ( "$output"->"script" ) "upnp"
+		:log info message="$output" 
+	}
+}
+
+
+# Collect system information
+# ----------------------------------
+:local model na
+:local serial na
+:local ffirmware na
+:local cfirmware na
+:local ufirmware na
+:if ($SystemInformation and $run) do={
+	:local version ([/system resource get version])
+	:local board ([/system resource get board-name])
+	:if ($board!="CHR") do={
+		/system routerboard
+		:set model ([get model])
+		:set serial ([get serial-number])
+		:set ffirmware ([get factory-firmware])
+		:set cfirmware ([get current-firmware])
+		:set ufirmware ([get upgrade-firmware])
+	}
+	:local identity ([/system identity get name])
+	:log info message="script=sysinfo version=\"$version\" board-name=\"$board\" model=\"$model\" serial=$serial identity=\"$identity\" factory-firmware=\"$ffirmware\" current-firmware=\"$cfirmware\" upgrade-firmware=\"$ufirmware\""
+}
+
+
+# Collect system health
+# ----------------------------------
+:if ($train > 6 and $SystemHealth) do={
+	# New version (RouterOS >6)
+	:foreach id in=[/system health find] do={
+		:local health "$[/system health get $id]"
+		:set ( "$health"->"script" ) "health"
+		:log info message="$health"
+	}
+} else={
+	# Old version (RouterOS 6 or older)
+	:if (!([/system health get]~"(state=disabled|^\$)")) do={
+		:local health "$[/system health get]"
+		:set ( "$health"->"script" ) "health"
+		:log info message="$health"
+	}
+}
+
+
+
+# Sends wireless client data to log server 
+# ----------------------------------
+:if ($Wireless && [:len [/int find where type=wlan]]>0) do={
+	/interface wireless registration-table
+	:foreach i in=[find] do={
+		:log info message=".id=$i;ap=$([get $i ap]);interface=$([get $i interface]);mac-address=$([get $i mac-address]);signal-strength=$([get $i signal-strength]);tx-rate=$([get $i tx-rate]);uptime=$([get $i uptime]);script=wifi"
+	}
+}
+
+
+# Count IP in address-lists
+#----------------------------------
+:if ($AddressLists) do={
+	:local array [ :toarray "" ]
+	:local addrcntdyn [:toarray ""] 
+	:local addrcntstat [:toarray ""] 
+	:local test
+	:foreach id in=[/ip firewall address-list find] do={
+		:local rec [/ip firewall address-list get $id]
+		:local listname ($rec->"list")
+		:local listdynamic ($rec->"dynamic")
+		:if (!($array ~ $listname)) do={ :set array ($array , $listname) }
+		:if ($listdynamic = true) do={
+			:set ($addrcntdyn->$listname) ($addrcntdyn->$listname+1)
+		} else={
+			:set ($addrcntstat->$listname) ($addrcntstat->$listname+1)}
+	}
+	:foreach k in=$array do={
+		:log info message=("script=address_lists list=$k dynamic=".(($addrcntdyn->$k)+0)." static=".(($addrcntstat->$k)+0))}
+}
+
+
+# Get MNDP (CDP) Neighbors
+# ----------------------------------
+:if ($Neighbor and $run) do={
+	:foreach neighborID in=[/ip neighbor find] do={
+		:local nb [/ip neighbor get $neighborID]
+		:local id [:pick ("$nb"->".id") 1 99]
+		:foreach key,value in=$nb do={
+			:local newline [:find $value "\n"]
+			:if ([$newline]>0) do={
+				:set value [:pick $value 0 $newline]
+			}
+			:log info message="script=neighbor nid=$id $key=\"$value\""
+		}
+	}
+}
+
+
+# Collect DHCP Pool information
+# ----------------------------------
+:if ($DHCP and $run) do={
+	/ip pool {
+		:local poolname
+		:local pooladdresses
+		:local poolused
+		:local minaddress
+		:local maxaddress
+		:local findindex
+
+# Iterate through IP Pools
+		:foreach pool in=[find] do={
+			:set poolname [get $pool name]
+			:set pooladdresses 0
+			:set poolused 0
+
+# Iterate through current pool's IP ranges
+			:foreach range in=[:toarray [get $pool range]] do={
+
+# Get min and max addresses
+				:set findindex [:find [:tostr $range] "-"]
+				:if ([:len $findindex] > 0) do={
+					:set minaddress [:pick [:tostr $range] 0 $findindex]
+					:set maxaddress [:pick [:tostr $range] ($findindex + 1) [:len [:tostr $range]]]
+				} else={
+					:set minaddress [:tostr $range]
+					:set maxaddress [:tostr $range]
+				}
+
+# Calculate number of ip in one range
+				:set pooladdresses ($maxaddress - $minaddress)
+
+# /foreach range
+			}
+
+# Test if pools is used in DHCP or VPN and show leases used
+			:local dname [/ip dhcp-server find where address-pool=$poolname]
+			:if ([:len $dname] = 0) do={
+# No DHCP server found, assume VPN
+				:set poolused [:len [used find pool=[:tostr $poolname]]]
+			} else={
+# DHCP server found, count leases
+				:local dname [/ip dhcp-server get [find where address-pool=$poolname] name]
+				:set poolused [:len [/ip dhcp-server lease find where server=$dname]]}
+
+# Send data
+			:log info message=("script=pool pool=$poolname used=$poolused total=$pooladdresses")
+
+# /foreach pool
+		}
+# /ip pool
+	}
+}
+
+
+# Get detailed command history RouterOS >= v7
+# ----------------------------------
+:if ($train > 6 and $CmdHistory) do={
+	:global cmd
+	:local f 0
+	:foreach i in=[/system history find] do={
+		:if ($i = $cmd) do={ :set f 1 }
+		:if ($f != 1) do={
+			:log info message="StartCMD"
+			:log info message=[/system history get $i]
+			:log info message="EndCMD"
+		}
+	}
+	:global cmd  [:pick [/system history find] 0]
+}
+
+
+# Test if CAPsMANN is installed.
+# ----------------------------------
+:if ( ([:len [/interface find where type="cap"]] > 0) and $CAPsMANN) do={ 
+	:local capsregistered ([/caps-man registration-table print count-only])
+	 
+	/caps-man interface
+	:local name
+	:local mac
+	 
+	# ignore all master interfaces
+	:foreach i in=[find where master-interface="none"] do={
+		:set name [get $i name]
+		:set mac [get $i radio-mac]
+		:local counter ([/caps-man registration-table print count-only  where interface=$name])
+		:log info message="script=caps-man name=$name counter=$counter"
+	}
+	:log info message="script=caps-man capsregistered=$capsregistered"
+#added to log frequency&chennel
+:if ( ([:len [/interface find where type="cap"]] > 0) and $CAPsMANN and $run) do={
+	:foreach i in=[/caps-man interface find where master-interface="none"] do={
+		:local name [/caps-man interface get $i name]
+		:local channel [/caps-man interface get $i current-channel]
+		:log info "$name: selected channel $channel"
+		}
+	}
+}
+
+
+
+# Collect routing information
+# ----------------------------------
+:if ($Routing) do={
+	/ip route
+	:foreach id in=[find] do={
+		:local route "$[get $id]"
+		:set ( "$route"->"script" ) "route"
+		:log info message="$route"
+	}
+}
+
+:if ($OSPF) do={
+	/routing ospf neighbor
+	:foreach id in=[find] do={
+		:local ospf "$[get $id]"
+		:set ( "$ospf"->"script" ) "ospf"
+		:log info message="$ospf"
+	}
+}
+
+:if ($BGP) do={
+	/routing bgp session
+	:foreach id in=[find] do={
+		:local bgp "$[get $id]"
+		:set ( "$bgp"->"script" ) "bgp"
+		:log info message="$bgp"
+	}
+}
+
+
+# Collect PPP/IPSEC
+# ----------------------------------
+:if ($PPP) do={
+	/ppp active
+	:foreach id in=[find] do={
+		:local ppp "$[get $id]"
+		:set ( "$ppp"->"script" ) "ppp"
+		:log info message="$ppp"
+	}
+}
+
+:if ($IPSEC) do={
+	/ip ipsec active-peers
+	:foreach id in=[find] do={
+		:local ipsec "$[get $id]"
+		:set ( "$ipsec"->"script" ) "ipsec"
+		:log info message="$ipsec"
+	}
+}
+
+# End Script
+
+
