@@ -31,6 +31,9 @@
 # Get RouterOS main version (used to run different script on different version)
 :local train [:tonum [:pick [/system resource get version] 0 1]] 
 
+# Get board type.  No all board support all functions
+:local board ([/system resource get board-name])
+
 # Collect system resource
 # ----------------------------------
 :if ($SystemResource) do={
@@ -114,8 +117,7 @@
 :local ufirmware na
 :if ($SystemInformation and $run) do={
 	:local version ([/system resource get version])
-	:local board ([/system resource get board-name])
-	:if ($board!="CHR") do={
+	:if ($board!="CHR" and $board!="x86") do={
 		/system routerboard
 		:set model ([get model])
 		:set serial ([get serial-number])
@@ -130,7 +132,7 @@
 
 # Collect system health
 # ----------------------------------
-:if ($train > 6 and $SystemHealth) do={
+:if ($train > 6 and $SystemHealth and $board!="CHR" and $board!="x86") do={
 	# New version (RouterOS >6)
 	:foreach id in=[/system health find] do={
 		:local health "$[/system health get $id]"
@@ -180,7 +182,7 @@
 }
 
 
-# Get MNDP (CDP) Neighbors
+# Get MNDP LLDP CDP Neighbors
 # ----------------------------------
 :if ($Neighbor and $run) do={
 	:foreach neighborID in=[/ip neighbor find] do={
@@ -287,14 +289,6 @@
 		:log info message="script=caps-man name=$name counter=$counter"
 	}
 	:log info message="script=caps-man capsregistered=$capsregistered"
-#added to log frequency&chennel
-:if ( ([:len [/interface find where type="cap"]] > 0) and $CAPsMANN and $run) do={
-	:foreach i in=[/caps-man interface find where master-interface="none"] do={
-		:local name [/caps-man interface get $i name]
-		:local channel [/caps-man interface get $i current-channel]
-		:log info "$name: selected channel $channel"
-		}
-	}
 }
 
 
@@ -350,5 +344,3 @@
 }
 
 # End Script
-
-
