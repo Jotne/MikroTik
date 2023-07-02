@@ -17,6 +17,7 @@
   3.7.1 Removed output lookup, not needed
   3.7.2 Added script version
   4.0.0 Removed command logs for NTP info
+  4.0.1 Removed more log info
   ######################################################
   #
   # Mikrotik Add-On for Splunk
@@ -31,6 +32,7 @@
       sourcetype=mikrotik
       module=script
       script=sysinfo
+      NOT "log info"
       | dedup host
       | rex "version=\"(?&lt;version&gt;[^\"]*)\" board-name=\"(?&lt;board_name&gt;[^\"]*)\" model=\"(?&lt;model&gt;[^\"]*)\" serial=(?&lt;serial&gt;\S*) identity=\"(?&lt;identity&gt;[^\"]*)\"" 
       | table  host identity serial model board_name version
@@ -137,7 +139,7 @@
             `index`
             sourcetype=mikrotik
             earliest=-1@h latest=now
-            script=ntp  NOT "log info"
+            script=ntp NOT "log info"
             | eval identity=coalesce(identity,host)
             | stats latest(status) as status by host identity
             | search status!=synchronized
@@ -167,12 +169,14 @@
     <panel>
       <title>List of devices</title>
       <table>
+      <title>May take some hour to get populated.</title>
         <search>
           <query>
             `index`
             sourcetype=mikrotik
             module=script
             script=sysinfo OR script=version
+            NOT "log info"
             | transaction host maxspan=5m 
             | eval identity=coalesce(identity,host)
             | rex "version=\"(?&lt;RouterOS&gt;[^\"]*)\" board-name=\"(?&lt;board_name&gt;[^\"]*)\" model=\"(?&lt;model&gt;[^\"]*)\" serial=(?&lt;serial&gt;\S*) identity=\"(?&lt;identity&gt;[^\"]*)\"" 
