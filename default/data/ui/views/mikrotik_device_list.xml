@@ -18,6 +18,7 @@
   3.7.2 Added script version
   4.0.0 Removed command logs for NTP info
   4.0.1 Removed more log info
+  4.0.2 Fixed version info
   ######################################################
   #
   # Mikrotik Add-On for Splunk
@@ -169,7 +170,7 @@
     <panel>
       <title>List of devices</title>
       <table>
-      <title>May take some hour to get populated.</title>
+      <title>May take some hours to get populated.</title>
         <search>
           <query>
             `index`
@@ -177,11 +178,12 @@
             module=script
             script=sysinfo OR script=version
             NOT "log info"
-            | transaction host maxspan=5m 
+            | transaction host maxspan=5m
+            | search script=sysinfo 
             | eval identity=coalesce(identity,host)
             | rex "version=\"(?&lt;RouterOS&gt;[^\"]*)\" board-name=\"(?&lt;board_name&gt;[^\"]*)\" model=\"(?&lt;model&gt;[^\"]*)\" serial=(?&lt;serial&gt;\S*) identity=\"(?&lt;identity&gt;[^\"]*)\"" 
             | fillnull value="-"
-            | stats sparkline count latest(RouterOS) as RouterOS by host identity serial model board_name factory_firmware current_firmware upgrade_firmware ver
+            | stats sparkline count latest(RouterOS) as RouterOS latest(ver) as ver by host identity serial model board_name factory_firmware current_firmware upgrade_firmware
             | rename sparkline AS "uptime" ver AS script_ver
             | search NOT factory_firmware=-
             | table host identity serial model board_name RouterOS count uptime factory_firmware current_firmware upgrade_firmware script_ver</query>
