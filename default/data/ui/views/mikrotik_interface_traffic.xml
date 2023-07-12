@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="4.0" theme="dark">
   <label>MikroTik Interface Traffic</label>
   <!--Version 
   2.8.1 First version
@@ -8,6 +8,7 @@
   3.3.0 Changed from table to fields
   3.7.0 Added dashboard version
   3.8.0 Rounded results
+  4.0.0 Rewritten calcualtion to give correctly bps and now works with multiple hosts
   ######################################################
   #
   # Mikrotik Add-On for Splunk
@@ -24,16 +25,19 @@
       host="$Host$"
       name="$Interface$"
       | eval host_name=coalesce(identity,host)
-      | sort 0 _time
-      | streamstats current=f  last(rx_byte) as rx_prev last(tx_byte) as tx_prev by name
+      | sort 0  _time
+      | streamstats current=f  last(rx_byte) as rx_prev last(tx_byte) as tx_prev by name host
       | eval 
-        rx=if(rx_prev&gt;rx_byte,rx_byte,(rx_byte-rx_prev))$size$,
-        tx=if(tx_prev&gt;tx_byte,tx_byte,(tx_byte-tx_prev))$size$
+        rx=if(rx_prev&gt;rx_byte,rx_byte,rx_byte-rx_prev),
+        tx=if(tx_prev&gt;tx_byte,tx_byte,tx_byte-tx_prev)
       | rename name as interface
       | fillnull value="-" comment
       | fields _time host interface host_name rx tx comment
     </query>
   </search>
+  <init>
+    <set token="Trellis">0</set>
+  </init>
   <fieldset submitButton="false">
     <input type="time">
       <label></label>
@@ -80,10 +84,10 @@
     </input>
     <input type="dropdown" token="size">
       <label>Size</label>
-      <choice value="">Bytes</choice>
-      <choice value="/1024">KB</choice>
-      <choice value="/1024/1024">MB</choice>
-      <choice value="/1024/1024/1024">GB</choice>
+      <choice value="">bps</choice>
+      <choice value="/1024">Kbps</choice>
+      <choice value="/1024/1024">Mbps</choice>
+      <choice value="/1024/1024/1024">Gbps</choice>
       <choice value="/1024/1024/1024/1024">TB</choice>
       <default>/1024/1024</default>
     </input>
@@ -95,14 +99,20 @@
       <choice value="span=1d">1 day</choice>
       <default></default>
     </input>
+    <input type="radio" token="Trellis">
+      <label></label>
+      <choice value="1">Trellis</choice>
+      <choice value="0">Standard</choice>
+      <default>1</default>
+    </input>
   </fieldset>
   <row>
     <panel>
       <chart>
         <search base="base_search">
           <query>
-            | eval info=interface."(".comment.")"
-            | timechart minspan=5m  eval(round(sum(rx),2)) as RX eval(round(sum(tx),2)) as TX by info limit=0
+            | eval info=host_name."-".interface."(".comment.")"
+            | timechart minspan=5m $Span$ eval(round(avg(rx)$size$/5/60*8,2)) as RX eval(round(avg(tx)$size$/5/60*8,2)) as TX by info limit=52
           </query>
         </search>
         <option name="charting.axisTitleX.visibility">collapsed</option>
@@ -114,7 +124,7 @@
         <option name="charting.lineWidth">4</option>
         <option name="height">1000</option>
         <option name="refresh.display">progressbar</option>
-        <option name="trellis.enabled">1</option>
+        <option name="trellis.enabled">$Trellis$</option>
         <option name="trellis.scales.shared">0</option>
         <option name="trellis.size">large</option>
         <option name="trellis.splitBy">$Sort$</option>
