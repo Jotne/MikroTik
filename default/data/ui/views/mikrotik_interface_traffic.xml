@@ -103,7 +103,7 @@
       <label></label>
       <choice value="1">Trellis</choice>
       <choice value="0">Standard</choice>
-      <default>1</default>
+      <default>0</default>
     </input>
   </fieldset>
   <row>

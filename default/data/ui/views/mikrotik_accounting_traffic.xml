@@ -7,6 +7,7 @@
   3.7.1 Removed clients with 0 bytes
   3.8.0 Change from bytes to delta_bytes in table
   3.8.1 Removed 0 fields to make math correct
+  4.0.0 Fixed table if router is rebooted or counter rest
   ######################################################
   #
   # Mikrotik Add-On for Splunk
@@ -26,7 +27,9 @@
       | where bytes_up&gt;0 and bytes_down&gt;0
       | where rate_down&gt;0 OR rate_up&gt;0
       | streamstats current=f last(bytes_down) AS last_down last(bytes_up) as last_up BY ip_address
-      | eval delta_down=last_down-bytes_down, delta_up=last_up-bytes_up
+      | eval 
+        delta_down=if(last_down&lt;bytes_down,last_down,last_down-bytes_down),
+        delta_up=if(last_up&lt;bytes_up,last_up,last_up-bytes_up)
       | eval bytes=if("$direction$"=="in",delta_up,delta_down)
       | eval bytes=round(bytes$size$,1)
       | eval  host_name=coalesce(identity,host)
