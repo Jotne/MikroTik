@@ -1,5 +1,5 @@
 <form version="3.9" theme="dark">
-  <label>MikroTik PPPoE Connection</label>
+  <label>MikroTik PPPoE Connections</label>
   <description>Shows PPPoE connections/error</description>
   <!--Version 
   3.0.0 First version
@@ -71,7 +71,7 @@
   </fieldset>
   <row>
     <panel>
-      <title>Logged inn users</title>
+      <title>Logged in users</title>
       <chart>
         <search base="base_search">
           <query>

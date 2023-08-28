@@ -1,5 +1,5 @@
 <form version="3.9" theme="dark">
-  <label>MikroTik DNS request</label>
+  <label>MikroTik DNS requests</label>
   <!--Version
   2.4.0
   2.5.1 Change to "coalesce

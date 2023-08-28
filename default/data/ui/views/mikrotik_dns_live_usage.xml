@@ -1,6 +1,6 @@
 <form version="3.9" theme="dark">
   <label>MikroTik DNS Live usage</label>
-  <description>Use this to see what units are online on the net.  It sees if a host request a dns within a 5 minute windows and count it as 1</description>
+  <description>Use this to see what units are online on the net.  It sees if a host requests a dns within a 5 minute window and counts it as 1</description>
   <!--Version
   2.4.0
   2.5.1 changed to "coalesce"

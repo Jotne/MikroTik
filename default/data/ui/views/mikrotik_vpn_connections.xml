@@ -1,6 +1,6 @@
 <form version="3.9" theme="dark">
   <label>MikroTik VPN Connections</label>
-  <description>Shows VPN connection (Panel are hidden if they has no data)</description>
+  <description>Shows VPN connections (Panels are hidden if they don't have any data)</description>
   <!--Version 
   2.4.0
   2.5.0

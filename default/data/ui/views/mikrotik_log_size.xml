@@ -1,6 +1,6 @@
 <form version="3.9" theme="dark">
   <label>MikroTik Log Size</label>
-  <description>Show how much each module uses of disk spaces in bytes on the Splunk server</description>
+  <description>Shows how much disk space each module or host takes on the Splunk server</description>
   <!--Version
   3.0.0 First version
   3.1.0 Added sort by and hostname

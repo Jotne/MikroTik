@@ -1,6 +1,6 @@
 <form version="3.9" theme="dark">
   <label>MikroTik Web Proxy</label>
-  <description>Shows http request going trough Web proxy.  Https are not logged.</description>
+  <description>Shows http requests going trough Web proxy. Https requests are not logged.</description>
   <!--Version 
   2.4.0
   2.5.1 Changed to "Coalesce"
