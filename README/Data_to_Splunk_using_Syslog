@@ -11,7 +11,7 @@
 :local SystemInformation true
 :local SystemHealth true
 :local TrafficData true
-:local AccuntData true
+:local AccountData true
 :local uPnP true
 :local Wireless true
 :local AddressLists true
@@ -88,7 +88,7 @@
 
 # Get traffic data v2 (Kid Control)
 # ----------------------------------
-:if ($AccuntData) do={
+:if ($AccountData) do={
 	:foreach logline in=[/ip kid-control device find] do={
 		:local output "$[/ip kid-control device get $logline]"
 		:set ( "$output"->"script" ) "kids"
