@@ -9,6 +9,7 @@
   3.7.0 Added dashboard version
   3.8.0 Rounded results
   4.0.0 Rewritten calcualtion to give correctly bps and now works with multiple hosts
+  4.1.0 Added graph to show total bytex tx/rx
   ######################################################
   #
   # Mikrotik Add-On for Splunk
@@ -32,7 +33,7 @@
         tx=if(tx_prev&gt;tx_byte,tx_byte,tx_byte-tx_prev)
       | rename name as interface
       | fillnull value="-" comment
-      | fields _time host interface host_name rx tx comment
+      | fields _time host interface host_name rx tx comment rx_byte tx_byte
     </query>
   </search>
   <init>
@@ -84,7 +85,7 @@
     </input>
     <input type="dropdown" token="size">
       <label>Size</label>
-      <choice value="">bps</choice>
+      <choice value="/1">bps</choice>
       <choice value="/1024">Kbps</choice>
       <choice value="/1024/1024">Mbps</choice>
       <choice value="/1024/1024/1024">Gbps</choice>
@@ -109,6 +110,36 @@
   <row>
     <panel>
       <chart>
+        <title>RX Bytes</title>
+        <search base="base_search">
+          <query>
+            | stats earliest(rx_byte) as e_rx_byte latest(rx_byte) as l_rx_byte earliest(tx_byte) as e_tx_byte latest(tx_byte) as l_tx_byte by host_name interface
+            | eval tot_rx_byte=(l_rx_byte - e_rx_byte)$size$, tot_tx_byte=(l_tx_byte - e_tx_byte)$size$
+            | eval info=host_name."-".interface
+            | stats sum(tot_rx_byte) by  info
+          </query>
+        </search>
+        <option name="charting.chart">pie</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>TX Bytes</title>
+        <search base="base_search">
+          <query>
+            | stats earliest(rx_byte) as e_rx_byte latest(rx_byte) as l_rx_byte earliest(tx_byte) as e_tx_byte latest(tx_byte) as l_tx_byte by host_name interface
+            | eval tot_rx_byte=(l_rx_byte - e_rx_byte)$size$, tot_tx_byte=(l_tx_byte - e_tx_byte)$size$
+            | eval info=host_name."-".interface
+            | stats sum(tot_tx_byte) by  info
+          </query>
+        </search>
+        <option name="charting.chart">pie</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
         <search base="base_search">
           <query>
             | eval info=host_name."-".interface."(".comment.")"
@@ -116,7 +147,7 @@
           </query>
         </search>
         <option name="charting.axisTitleX.visibility">collapsed</option>
-        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
         <option name="charting.axisTitleY2.visibility">visible</option>
         <option name="charting.chart">line</option>
         <option name="charting.chart.stackMode">default</option>
