@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik DNS requests</label>
   <!--Version
   2.4.0
@@ -15,28 +15,28 @@
   3.3.1 Change from table to fields
   3.7.0 Added Site drop down
   3.7.1 Added verssion ifno
+  4.0.1 Changed to use serial.  Shorten column name
+  4.0.2 Added Time Span and separated IP address from name with -
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=dns
       eventtype=dns_query
       site!=*.in-addr.arpa
       site=$Site$
-      host="$Host$"
+      serial="$Serial$"
       src_ip="$src_ip$"
-      | eval host_name=coalesce(identity,host)
       | lookup dnslookup clientip as src_ip OUTPUT clienthost as src_host
       | eval src_host=coalesce(src_host,src_ip)
-      | fields _time host src_ip site src_host host_name
+      | fields _time host src_ip site src_host identity serial
       | sort 0 -_time
     </query>
   </search>
@@ -48,13 +48,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -72,7 +72,7 @@
             ,l_ip=mvindex(src_ip_split,3)
           | stats count by src_host l_ip src_ip
           | eval data=src_ip
-          | eval info=src_host.".".l_ip." (".count.")"
+          | eval info=src_host."-".l_ip." (".count.")"
           | sort - count
         </query>
       </search>
@@ -96,6 +96,15 @@
       <fieldForValue>data</fieldForValue>
       <default>*</default>
     </input>
+    <input type="dropdown" token="Span">
+      <label>Time Span</label>
+      <choice value="bins=100">Default</choice>
+      <choice value="span=1m">1 min</choice>
+      <choice value="span=5m">5 min</choice>
+      <choice value="span=1h">1 hour</choice>
+      <choice value="span=1d">1 day</choice>
+      <default>bins=100</default>
+    </input>
   </fieldset>
   <row>
     <panel>
@@ -107,7 +116,7 @@
               ,To_count=mvcount(site_split)
               ,site_dom=mvindex(site_split,To_count-1)
               ,site_info=mvindex(site_split,To_count-2)
-            | timechart count by src_host limit=10
+            | timechart $Span$ count by src_host limit=10
           </query>
         </search>
         <option name="charting.axisTitleX.visibility">collapsed</option>
@@ -120,29 +129,35 @@
     <panel>
       <input type="radio" token="Sort">
         <label>Sort by</label>
-        <choice value="top src_ip src_host site limit=0">Number of Hits(long)</choice>
-        <choice value="top src_ip src_host site_info limit=0">Number of Hits(short)</choice>
-        <choice value="table _time host src_host site site_info">Time</choice>
-        <default>top src_ip src_host site_info limit=0</default>
+        <choice value="top device src site limit=0">Number of Hits(long)</choice>
+        <choice value="top device src site_info limit=0">Number of Hits(short)</choice>
+        <choice value="table _time device src site site_info">Time</choice>
+        <default>top device src site_info limit=0</default>
       </input>
       <table>
         <search base="base_search">
           <query>
             | eval 
-              site_split=split(site,".")
-              ,To_count=mvcount(site_split)
-              ,site_dom=mvindex(site_split,To_count-1)
-              ,site_info=mvindex(site_split,To_count-2)
+              site_split=split(site,"."),
+              To_count=mvcount(site_split),
+              site_dom=mvindex(site_split,To_count-1),
+              site_info=mvindex(site_split,To_count-2),
+              device=identity." - ".serial." - ".host,
+              src=src_host." - ".src_ip
             | $Sort$
             | fields - percent
           </query>
         </search>
         <option name="count">20</option>
-        <format type="color" field="src_host">
+        <format type="color" field="site_info">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>
-        <format type="color" field="site_info">
+        <format type="color" field="device">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="src">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>

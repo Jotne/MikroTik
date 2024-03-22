@@ -1,8 +1,15 @@
 # Collect information from Mikrotik RouterOS
-# Jotne 2023
+# Jotne 2024
 # Script name=Data_to_Splunk_using_Syslog
-:log info message="script=version ver=5.2"
+:log info message="script=version ver=5.6"
 # ----------------------------------
+
+# Auto update syslog server. 5.3-5.4.
+# Change <your syslog dns name> to the dns of your syslog server.
+# The update is disabled by default.  Remove the # from the two next line to use it.
+
+#:local mySyslog [resolve <your syslog dns name>]
+#/system/logging/action/set [find where name="logserver"] remote=$mySyslog
 
 
 # What data to collect.  Set to false to skip the section 
@@ -30,9 +37,6 @@
 
 # Get RouterOS main version (used to run different script on different version)
 :local train [:tonum [:pick [/system resource get version] 0 1]] 
-
-# Get board type.  No all board support all functions
-:local board ([/system resource get board-name])
 
 # Collect system resource
 # ----------------------------------
@@ -108,31 +112,32 @@
 }
 
 
-# Collect system information
+# Collect system information 5.5 added ID for non routerBoard 5.6 Remvoed serial
 # ----------------------------------
 :local model na
-:local serial na
 :local ffirmware na
 :local cfirmware na
 :local ufirmware na
 :if ($SystemInformation and $run) do={
 	:local version ([/system resource get version])
-	:if ($board!="CHR" and $board!="x86") do={
-		/system routerboard
-		:set model ([get model])
-		:set serial ([get serial-number])
-		:set ffirmware ([get factory-firmware])
-		:set cfirmware ([get current-firmware])
-		:set ufirmware ([get upgrade-firmware])
-	}
+	:local board ([/system resource get board-name])
 	:local identity ([/system identity get name])
-	:log info message="script=sysinfo version=\"$version\" board-name=\"$board\" model=\"$model\" serial=$serial identity=\"$identity\" factory-firmware=\"$ffirmware\" current-firmware=\"$cfirmware\" upgrade-firmware=\"$ufirmware\""
+	:do {
+		:if ($board!="CHR" OR $board!="x86") do={
+			/system routerboard
+			:set model ([get model])
+			:set ffirmware ([get factory-firmware])
+			:set cfirmware ([get current-firmware])
+			:set ufirmware ([get upgrade-firmware])
+		}
+	} on-error={}
+	:log info message="script=sysinfo version=\"$version\" board-name=\"$board\" model=\"$model\" identity=\"$identity\" factory-firmware=\"$ffirmware\" current-firmware=\"$cfirmware\" upgrade-firmware=\"$ufirmware\""
 }
 
 
 # Collect system health
 # ----------------------------------
-:if ($train > 6 and $SystemHealth and $board!="CHR" and $board!="x86") do={
+:if ($train > 6 and $SystemHealth) do={
 	# New version (RouterOS >6)
 	:foreach id in=[/system health find] do={
 		:local health "$[/system health get $id]"
@@ -182,7 +187,7 @@
 }
 
 
-# Get MNDP LLDP CDP Neighbors
+# Get MNDP (CDP) Neighbors
 # ----------------------------------
 :if ($Neighbor and $run) do={
 	:foreach neighborID in=[/ip neighbor find] do={
@@ -272,23 +277,10 @@
 }
 
 
-# Test if CAPsMANN is installed.
+# Test if CAPsMANN is installed and run script 5.5
 # ----------------------------------
 :if ( ([:len [/interface find where type="cap"]] > 0) and $CAPsMANN) do={ 
-	:local capsregistered ([/caps-man registration-table print count-only])
-	 
-	/caps-man interface
-	:local name
-	:local mac
-	 
-	# ignore all master interfaces
-	:foreach i in=[find where master-interface="none"] do={
-		:set name [get $i name]
-		:set mac [get $i radio-mac]
-		:local counter ([/caps-man registration-table print count-only  where interface=$name])
-		:log info message="script=caps-man name=$name counter=$counter"
-	}
-	:log info message="script=caps-man capsregistered=$capsregistered"
+	/system script run CAPsMANN
 }
 
 
@@ -344,3 +336,4 @@
 }
 
 # End Script
+

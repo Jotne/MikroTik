@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik Wifi connection</label>
   <description>Shows clients connects or disconnect to the Wifi</description>
   <!--Version 
@@ -12,28 +12,27 @@
   3.3.0 Changed for table to fields
   3.7.0 Added dashboard version
   3.9.0 Changed to use dhcp_table for client name
+  4.0.1 Changed to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=wireless
       eventtype=wifi_connected
       OR eventtype=wifi_disconnected_*
-      host="$Host$"
+      serial="$Serial$"
       mac="$Client$"
       int="$Interface$"
-      | eval host_name=coalesce(identity,host)
       | lookup dhcp_table mac output dns device_id
       | eval client = coalesce (dns, device_id, mac)
-      | fields _time host mac int eventtype host_name client
+      | fields _time host mac int eventtype identity client serial
     </query>
   </search>
   <fieldset submitButton="false" autoRun="true">
@@ -44,13 +43,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data." (".count.")"
           | sort - count
         </query>
       </search>

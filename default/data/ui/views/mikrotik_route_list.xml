@@ -1,32 +1,31 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik Route List</label>
   <description>This show all routes in the MikroTik Router.  Static/Dynamic/Connected etc</description>
   <!--Version
   3.7.0 First version
   3.8.0 Addded disabled status and added VPN route
+  4.0.1 Changed to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=script
       script=route
-      host="$Host$"
+      serial="$Serial$"
       dst_address="$Dest$"
       | eval active=coalesce(active,"false"),
         disabled=coalesce(disabled,"false"),
-        host_name=coalesce(identity,host),
         protocol=case(vpn="true","vpn",bgp="true","bgp",ospf="true","ospf",gmp="true","gmp",igmp="true","igmp",pim_sm="true","pim-sm",rip="true","rip",rpki="true","rpki",connect="true","connected",dhcp="true","dhcp",static="true","static",1=1,"-")
       | search 
         protocol="$Protocol$"
-      | fields _time host host_name disabled dst_address gateway immediate_gw local_address distance protocol active routing_table
+      | fields _time host identity disabled dst_address gateway immediate_gw local_address distance protocol active routing_table serial
     </query>
   </search>
   <fieldset submitButton="false">
@@ -37,13 +36,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity."-".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -123,7 +122,8 @@
             | sort -_time
             | dedup host  dst_address gateway distance
             | search status IN ($Status$)
-            | table _time status host_name host disabled protocol dst_address gateway immediate_gw local_address distance active routing_table
+            | eval device=identity." - ".serial." - ".host
+            | table _time status device disabled protocol dst_address gateway immediate_gw local_address distance active routing_table
             | sort host distance dst_address</query>
         </search>
         <option name="count">100</option>
@@ -155,12 +155,12 @@
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>
-        <format type="color" field="host_name">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
         <format type="color" field="disabled">
           <colorPalette type="map">{"false":#118832,"true":#D41F1F}</colorPalette>
+        </format>
+        <format type="color" field="device">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
         </format>
       </table>
     </panel>

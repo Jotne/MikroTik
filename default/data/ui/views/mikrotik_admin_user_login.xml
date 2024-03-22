@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik Admin user login</label>
   <description>Shows ok/blocked admin access to ther router</description>
   <!--Version 
@@ -14,24 +14,23 @@
   3.3.0 Changed from table to fiels
   3.6.0 Added color
   3.7.0 Added dashboard version
+  4.0.1 Change to user serail as main ID. Fixed romon info extraction. Use host_name in graphs
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=system
       eventtype IN (adm_user_login_failure,*user_logged_in)
-      host="$Host$"
+      serial=$Serial$
       user="$User$"
-      | eval host_name=coalesce(identity,host)
-      | fields _time host user system user_ip eventtype host_name
+      | fields _time host user system user_ip eventtype identity serial
     </query>
   </search>
   <fieldset submitButton="false">
@@ -42,13 +41,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -89,7 +88,7 @@
         <search base="base_search">
           <query>
             | search eventtype=adm_user_login_failure
-            | eval info=user."-".system."-".user_ip
+            | eval info=user."-".system."-".identity
             | timechart $Span$ count by info  limit=0
           </query>
           <progress>
@@ -114,7 +113,7 @@
         <search base="base_search">
           <query>
             | search eventtype=*user_logged_in
-            | eval info=user."-".system."-".user_ip
+            | eval info=user."-".system."-".identity
             | timechart $Span$ count by info  limit=0
           </query>
           <progress>
@@ -139,7 +138,8 @@
         <title>When open terminal in Winbox or Web, system will show telnet</title>
         <search base="base_search">
           <query>
-            | table _time host host_name user system user_ip eventtype
+            | eval device=identity." - ".serial." - ".host
+            | table _time device user system user_ip eventtype
           </query>
         </search>
         <option name="count">100</option>
@@ -150,20 +150,16 @@
         <format type="color" field="system">
           <colorPalette type="map">{"telnet":#F1813F,"winbox":#53A051,"ssh":#006D9C,"web":#DC4E41}</colorPalette>
         </format>
-        <format type="color" field="host">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
-        <format type="color" field="host_name">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
         <format type="color" field="user_ip">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>
         <format type="color" field="eventtype">
           <colorPalette type="map">{"adm_user_logged_in":#53A051,"adm_user_login_failure":#DC4E41}</colorPalette>
+        </format>
+        <format type="color" field="device">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
         </format>
       </table>
     </panel>

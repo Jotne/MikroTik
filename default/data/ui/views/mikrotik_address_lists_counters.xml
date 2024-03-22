@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>Mikrotik Address Lists counters</label>
   <!--Version
   2.7.1 First version
@@ -7,25 +7,24 @@
   3.0.0 Fixed missing identity
   3.3.0 Change from table to fields
   3.7.0 Added dashboard version
+  4.0.1 Changed to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-       `index`
-      sourcetype=mikrotik
+      index=mikrotik
       script=address_lists
-      host="$Host$"
+      serial="$Serial$"
       list="$Lists$"
       list="$Free$"
-      | eval total=dynamic+static,
-             host_name=coalesce(identity,host)
-      | fields _time host list static dynamic total host_name
+      | eval total=dynamic+static
+      | fields _time host list static dynamic total identity serial
     </query>
   </search>
   <fieldset submitButton="false">
@@ -36,21 +35,20 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | transaction _time
-          | dedup host
-          | eval info=host_name."-".host
-          | stats sum(total) as count by info host
+          | dedup serial
+          | eval info=identity."-".serial
+          | stats sum(total) as count by info serial
           | eval info=info."(".count.")"
           | sort -count
         </query>
       </search>
       <choice value="*">Any</choice>
       <fieldForLabel>info</fieldForLabel>
-      <fieldForValue>host</fieldForValue>
+      <fieldForValue>serial</fieldForValue>
       <default>*</default>
     </input>
     <input type="dropdown" token="Lists">

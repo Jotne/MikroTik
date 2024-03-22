@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik Dynamic nat rules</label>
   <description>Collected using Scripting (Using "/ip firewall nat print" to get data)</description>
   <!--Version 
@@ -19,30 +19,27 @@
   3.4.0 Added all type of dynamic nat
   3.4.1 Renamed and adopted to dynamic nat
   3.7.0 Added dashboard version
+  4.0.1 Change to use serial, removed type
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       script=dnat OR script=upnp
       to_addresses="$src_host$"
       dst_port="$dst_port$"
       protocol="$protocol$"
-      host="$Host$"
-      | eval host_name=coalesce(identity,host)
+      serial="$Serial$"
       | rex mode=sed field=service "s/ \(.*//g"
-      | fillnull value="-" type
       | search
         service="$service$"
-        type="$type$"
-      | fields _time host to_addresses dst_port protocol type service host_name
+      | fields _time host to_addresses dst_port protocol service identity serial
     </query>
   </search>
   <fieldset submitButton="false">
@@ -53,13 +50,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=host_name." - ".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -80,21 +77,6 @@
           | top to_addresses src_host limit=0
           | sort count
           | eval info=src_host." (".count.")"</query>
-      </search>
-      <initialValue>*</initialValue>
-      <default>*</default>
-    </input>
-    <input type="dropdown" token="type">
-      <label>Type</label>
-      <choice value="*">All</choice>
-      <fieldForLabel>info</fieldForLabel>
-      <fieldForValue>type</fieldForValue>
-      <search base="base_search">
-        <query>
-          | top type limit=0
-          | sort -count
-          | eval info=type." (".count.")"
-        </query>
       </search>
       <initialValue>*</initialValue>
       <default>*</default>
@@ -182,8 +164,8 @@
           <query>
             | lookup dnslookup clientip as to_addresses OUTPUT clienthost as src_host
             | eval client=src_host."-".to_addresses
-            | eval host=host_name."-".host
-            | stats count by host client type service protocol dst_port
+            | eval device=identity." - ".serial." - ".host
+            | stats count by device client service protocol dst_port
             | sort -count 
           </query>
         </search>
@@ -194,15 +176,7 @@
         <option name="rowNumbers">false</option>
         <option name="totalsRow">false</option>
         <option name="wrap">true</option>
-        <format type="color" field="host">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
         <format type="color" field="client">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
-        <format type="color" field="type">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>
@@ -211,6 +185,10 @@
           <scale type="sharedCategory"></scale>
         </format>
         <format type="color" field="protocol">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="device">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>

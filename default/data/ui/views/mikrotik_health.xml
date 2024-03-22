@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik Health</label>
   <!--Version 
   2.4.0
@@ -13,24 +13,23 @@
   3.5.3 Fixed number roudning
   3.7.0 Added dashboard version
   3.7.1 Removed Y-Axes
+  4.0.1 Change to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=script
       script=health
-      | eval host_name=coalesce(identity,host)
       | eval {name}=value
       | eval voltage=if(voltage&gt;60,voltage/10,voltage)
-      | fields _time host *temperature* *voltage *speed *current power_consumption host_name name value
+      | fields _time host *temperature* *voltage *speed *current power_consumption identity name value serial
     </query>
   </search>
   <fieldset submitButton="false">
@@ -41,13 +40,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -74,9 +73,9 @@
       <single>
         <search base="base_search">
           <query>
-            | search name=psu*state host="$Host$"
+            | search name=psu*state serial="$Serial$"
             | dedup name
-            | eval info=name.":".host
+            | eval info=name.":".identity
             | eval value=if(value="ok",1,0)
             | stats count by info value
           </query>
@@ -109,8 +108,8 @@
         <search base="base_search">
           <query>
             search
-              host="$Host$"
-            | timechart $Span$ avg(*temperature*) by host
+              serial="$Serial$"
+            | timechart $Span$ avg(*temperature*) by identity
             | foreach * [eval &lt;&lt;FIELD&gt;&gt;=round('&lt;&lt;FIELD&gt;&gt;',1)]
           </query>
           <progress>
@@ -137,8 +136,8 @@
         <search base="base_search">
           <query>
             search
-              host="$Host$"
-            | timechart $Span$ avg(power_consumption) as power_consumption by host
+              serial="$Serial$"
+            | timechart $Span$ avg(power_consumption) as power_consumption by identity
           </query>
           <progress>
             <condition match="'job.resultCount' &gt; 0">
@@ -164,8 +163,8 @@
         <search base="base_search">
           <query>
             search
-              host="$Host$"
-            | timechart $Span$ avg(*voltage) by host
+              serial="$Serial$"
+            | timechart $Span$ avg(*voltage) by identity
           </query>
           <progress>
             <condition match="'job.resultCount' &gt; 0">
@@ -191,8 +190,8 @@
         <search base="base_search">
           <query>
             search
-              host="$Host$"
-            | timechart $Span$ avg(*current) by host
+              serial="$Serial$"
+            | timechart $Span$ avg(*current) by identity
             | foreach * [eval &lt;&lt;FIELD&gt;&gt;=round('&lt;&lt;FIELD&gt;&gt;',2)]
           </query>
           <progress>
@@ -219,8 +218,8 @@
         <search base="base_search">
           <query>
             search
-              host="$Host$"
-            | timechart $Span$ avg(*speed) by host
+              serial="$Serial$"
+            | timechart $Span$ avg(*speed) by identity
           </query>
           <progress>
             <condition match="'job.resultCount' &gt; 0">

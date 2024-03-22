@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik VPN Connections</label>
   <description>Shows VPN connections (Panels are hidden if they don't have any data)</description>
   <!--Version 
@@ -19,24 +19,23 @@
   3.3.4 Changed from table to fields
   3.7.0 Added dashboard version
   3.7.1 Removed x/y axes
+  4.0.1 Change to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       eventtype IN (*tp_connection_from,*tp_user_logged_in,ppp_authentication_failed,l2tp_user_logged_out)
       module=*tp
-      host="$Host$"
-      | eval host_name=coalesce(identity,host)
+      serial="$Serial$"
       | transaction startswith="eventtype=*tp_connection_from"  maxspan=10s
-      | fields _time host user eventtype module src_ip linecount host_name user_ip
+      | fields _time host user eventtype module src_ip linecount identity user_ip serial
       | fillnull value="-" 
       | search user="$User$"
     </query>
@@ -49,13 +48,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -122,8 +121,8 @@
         <search base="base_search">
           <query>
             | search eventtype=*tp_user_logged_in
-            | eval host=host_name."-".host
-            | table _time host user module src_ip user_ip
+            | eval device=identity." - ".serial." - ".host
+            | table _time device user module src_ip user_ip
           </query>
           <progress>
             <condition match="'job.resultCount' &gt; 0">
@@ -141,15 +140,15 @@
         <option name="rowNumbers">false</option>
         <option name="totalsRow">false</option>
         <option name="wrap">true</option>
-        <format type="color" field="host">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
         <format type="color" field="user">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>
         <format type="color" field="module">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="device">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>
@@ -162,10 +161,9 @@
       <chart>
         <search>
           <query>
-            `index`
-            sourcetype=mikrotik
+            index=mikrotik
             module=*tp
-            host="$Host$"
+            serial="$Serial$"
             eventtype=l2tp_user_logged_out
             user="$User$"
             | timechart $Span$ count by user limit=20
@@ -192,15 +190,14 @@
       <table>
         <search>
           <query>
-            `index`
-            sourcetype=mikrotik
+            index=mikrotik
             module=*tp
-            host="*"
+            serial="*"
             eventtype=l2tp_user_logged_out
             user="$User$"
             | eval host_name=coalesce(identity,host)
-            | eval host=host_name."-".host
-            | table _time host user seconds bytes_in bytes_out
+            | eval device=identity." - ".serial." - ".host
+            | table _time device user seconds bytes_in bytes_out
           </query>
           <progress>
             <condition match="'job.resultCount' &gt; 0">
@@ -218,11 +215,11 @@
         <option name="rowNumbers">false</option>
         <option name="totalsRow">false</option>
         <option name="wrap">true</option>
-        <format type="color" field="host">
+        <format type="color" field="user">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>
-        <format type="color" field="user">
+        <format type="color" field="device">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>
@@ -289,11 +286,10 @@
       <chart>
         <search>
           <query>
-            `index`
-            sourcetype=mikrotik
+            index=mikrotik
             module=ipsec
             eventtype=ipsec_wrong_password
-            host="$Host$"
+            serial="$Serial$"
             | iplocation src_ip
             | eval info=src_ip." ".Country
             | timechart $Span$ count by info limit=0
@@ -320,11 +316,10 @@
       <chart>
         <search>
           <query>
-            `index`
-            sourcetype=mikrotik
+            index=mikrotik
             module=ipsec
             eventtype=ipsec_phase1_negotiation_failed
-            host="$Host$"
+            serial="$Serial$"
             | iplocation src_ip
             | eval info=src_ip." ".Country
             | timechart $Span$ count by info limit=0
@@ -351,11 +346,10 @@
       <chart>
         <search>
           <query>
-            `index`
-            sourcetype=mikrotik
+            index=mikrotik
             module=ipsec
             eventtype=ipsec_spi_not_registered
-            host="$Host$"
+            serial="$Serial$"
             | iplocation src_ip
             | eval info=src_ip." ".Country
             | timechart $Span$ count by info limit=0
@@ -382,11 +376,10 @@
       <chart>
         <search>
           <query>
-            `index`
-            sourcetype=mikrotik
+            index=mikrotik
             module=ipsec
             eventtype=ipsec_invalid_exchange_type
-            host="$Host$"
+            serial="$Serial$"
             | iplocation src_ip
             | eval info=src_ip." ".Country
             | timechart $Span$ count by info limit=0

@@ -2,9 +2,6 @@
 access = read : [ * ], write : [ admin ]
 export = system
 
-[transforms]
-export = none
-
 [views]
 export = none
 

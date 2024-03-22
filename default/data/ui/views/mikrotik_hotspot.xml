@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik Hotspot login/logout information</label>
   <description>Shows client: log in  (chap/cookie/trail user) log out (keepalive/timeout/user request/traffic limit/admin reset) log in failed</description>
   <!--Version 
@@ -9,25 +9,25 @@
   3.0.0 Fixed missing identity
   3.3.0 Changed from table to fields
   3.7.0 Added dashboard version
+  4.0.1 Change to use serail.  Added host if more than one router runs hotspot
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=hotspot
       eventtype IN (hotspot_login_*,hotspot_logged_*)
       user="$user$"
-      | eval host_name=coalesce(identity,host)
+      serial=$Serial$
       | transaction maxpause=2s user
       | search src_ip="$IP$"
-      | fields _time user src_ip eventtype host_name
+      | fields _time user src_ip eventtype identity
     </query>
   </search>
   <fieldset submitButton="false">
@@ -38,13 +38,28 @@
         <latest>now</latest>
       </default>
     </input>
+    <input type="dropdown" token="Serial">
+      <label>Host</label>
+      <search base="base_search">
+        <query>
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data." (".count.")"
+          | sort -count
+        </query>
+      </search>
+      <choice value="*">Any</choice>
+      <fieldForLabel>info</fieldForLabel>
+      <fieldForValue>data</fieldForValue>
+      <default>*</default>
+    </input>
     <input type="dropdown" token="user">
       <label>user</label>
       <search base="base_search">
         <query>
           | eval data=user
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | stats count by data identity
+          | eval info=identity."-".data." (".count.")"
           | sort -count
         </query>
       </search>

@@ -1,27 +1,26 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>Mikrotik CAPsMAN Channel Usage</label>
   <!--Version 
   3.1.0 First version
   3.3.0 Changed from table to fields
   3.7.0 Added dashboard version
   3.9.0 Updated baase search
+  4.0.1 Changed to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   --><search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module="script" OR "caps"
       eventtype=capsman_channel
-      host="$Host$"
+      serial="$Serial$"
       ap="$AP$"
-      | eval host_name=coalesce(identity,host)
-      | fields _time host_name host ap channel frequency
+      | fields _time identity host ap channel frequency serial
       | sort 0 -_time
     </query>
   </search>
@@ -33,13 +32,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -85,9 +84,8 @@
       <table>
         <search base="base_search">
           <query>
-            | eval host=coalesce(host_name,host)
             | eval channel=channel." (".frequency.")"
-            | table _time host ap channel
+            | table _time identity ap channel
           </query>
         </search>
         <option name="count">20</option>
@@ -97,7 +95,7 @@
         <option name="rowNumbers">false</option>
         <option name="totalsRow">false</option>
         <option name="wrap">true</option>
-        <format type="color" field="host">
+        <format type="color" field="identity">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>

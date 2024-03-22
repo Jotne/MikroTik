@@ -1,0 +1,24 @@
+# CAPsMANN script
+
+:local capsregistered ([/caps-man registration-table print count-only])
+ 
+/caps-man interface
+:local name
+:local mac
+ 
+# ignore all master interfaces
+:foreach i in=[find where master-interface="none"] do={
+	:set name [get $i name]
+	:set mac [get $i radio-mac]
+	:local counter ([/caps-man registration-table print count-only  where interface=$name])
+	:log info message="script=caps-man name=$name counter=$counter"
+}
+:log info message="script=caps-man capsregistered=$capsregistered"
+#added to log frequency&chennel
+:if ( ([:len [/interface find where type="cap"]] > 0) and $CAPsMANN and $run) do={
+:foreach i in=[/caps-man interface find where master-interface="none"] do={
+	:local name [/caps-man interface get $i name]
+	:local channel [/caps-man interface get $i current-channel]
+	:log info "$name: selected channel $channel"
+	}
+}

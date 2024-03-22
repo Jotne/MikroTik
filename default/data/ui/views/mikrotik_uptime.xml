@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik Uptime</label>
   <!--Version 
   2.4.0
@@ -11,26 +11,25 @@
   3.3.0 Changed from table to fields
   3.7.0 Added dashboard version
   3.7.1 Added ?: to regex
+  4.0.1 Change to user serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=script
       script=resource
-      host="$Host$"
-      | eval host_name=coalesce(identity,host)
+      serial="$Serial$"
       | rex field=uptime "(?:(?&lt;y&gt;\d+)y)?(?:(?&lt;w&gt;\d+)w)?(?:(?&lt;d&gt;\d+)d)?(?&lt;h&gt;\d+):(?&lt;m&gt;\d+):(?&lt;s&gt;\d+)"
       | fillnull value=0
       | eval utime=(s+m*60+h*60*60+d*60*60*24+w*60*60*24*7+y*60*60*24*365)/60/60/24
-      | fields _time host utime host_name
+      | fields _time host utime identity serial
     </query>
   </search>
   <fieldset submitButton="false">
@@ -41,14 +40,14 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host (uptime days)</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats latest(utime) as days by data host_name
+          | eval data=serial
+          | stats latest(utime) as days by data identity
           | eval days=round(days,0)
-                ,info=host_name."-".data." (".days.")"
+                ,info=identity." - ".data." (".days.")"
           | sort -days</query>
       </search>
       <choice value="*">Any</choice>
@@ -62,7 +61,7 @@
       <single>
         <search base="base_search">
           <query>
-          | eval info=host_name."-".host
+          | eval info=identity." - ".serial
           | stats latest(utime) as days by info
           </query>
         </search>
@@ -81,7 +80,7 @@
       <chart>
         <search base="base_search">
           <query>
-            | eval info=host_name."-".host
+            | eval info=identity." - ".serial
             | timechart avg(utime) by info
           </query>
         </search>

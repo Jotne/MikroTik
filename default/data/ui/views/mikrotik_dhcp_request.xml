@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik DHCP requests</label>
   <!--Version 
   2.4.0
@@ -21,46 +21,44 @@
   3.8.1 Change transaction to 100ms
   3.8.2 Set dropdown to request as default
   3.9.0 New layout that does not need debug mode
+  4.0.1 Changed to use serail, fixed wrong dropdown
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Copyright (C) 2023 Jotne
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=dhcp
       info1=info
       assigned OR deassigned
-      | eval identity=coalesce(identity,host)
       | rex "MikroTik:\s(?&lt;dhcp_server&gt;\S+)\s(?&lt;status&gt;(deassigned|assigned))\s(?&lt;ip&gt;\S+)\s\S+\s(?&lt;mac&gt;\S+)(\s(?&lt;device_id&gt;.*))?"
       | fillnull value="-"
       | search
-        host =  $Host$
+        serial =  $Serial$
         dhcp_server = $dhcpserver$
         status = $Status$
         ip = $IP$
         device_id = "$Deviceid$"
         mac = $Mac$
-      | fields _time identity host dhcp_server status ip device_id mac
+      | fields _time identity host dhcp_server status ip device_id mac serial
       | sort -_time
     </query>
   </search>
   <search id="base_search2">
     <query>
-      `index`
-      sourcetype=mikrotik
-      module=dhcp
+      index=mikrotik
+      module = dhcp
       got
-      info1=info 
+      info1 = info 
+      serial = $Serial2$
       | rex "MikroTik:\sdhcp-client on (?&lt;interface&gt;\S+)\sgot IP address\s(?&lt;ip&gt;\S+)"
-      | eval identity=coalesce(identity,host)
       | fillnull value="-"
-      | fields _time identity host ip interface
+      | fields _time identity host ip interface serial
     </query>
     <earliest>$Time2.earliest$</earliest>
     <latest>$Time2.latest$</latest>
@@ -73,13 +71,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
+          | eval data=serial
           | stats count by data identity
-          | eval info=identity."-".data." (".count.")"
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -207,10 +205,11 @@
       <table>
         <search base="base_search">
           <query>
-            | stats count latest(_time) as latest_request by identity host dhcp_server status ip device_id mac
+            | stats count latest(_time) as latest_request by serial identity host dhcp_server status ip device_id mac
             | convert ctime(latest_request)
             | lookup dnslookup clientip as ip OUTPUT clienthost as dns
-            | table identity host latest_request dhcp_server status ip device_id dns mac count
+            | eval device=identity." - ".serial." - ".host
+            | table latest_request device dhcp_server status ip device_id dns mac count
             | sort -latest_request
           </query>
         </search>
@@ -221,21 +220,12 @@
         <option name="rowNumbers">false</option>
         <option name="totalsRow">false</option>
         <option name="wrap">true</option>
-        <format type="color" field="identity">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
-        <format type="color" field="host">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
         <format type="color" field="dhcp_server">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>
         <format type="color" field="status">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
+          <colorPalette type="map">{"assigned":#55C169,"deassigned":#D94E17}</colorPalette>
         </format>
         <format type="color" field="ip">
           <colorPalette type="sharedList"></colorPalette>
@@ -253,6 +243,10 @@
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>
+        <format type="color" field="device">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
       </table>
     </panel>
   </row>
@@ -266,13 +260,13 @@
           <latest>now</latest>
         </default>
       </input>
-      <input type="dropdown" token="Host2">
+      <input type="dropdown" token="Serial2">
         <label>Host</label>
         <search base="base_search2">
           <query>
-          | eval data=host
+          | eval data=serial
           | stats count by data identity
-          | eval info=identity."-".data." (".count.")"
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
         </search>
@@ -285,7 +279,8 @@
         <search base="base_search2">
           <query>
             | lookup dnslookup clientip as ip OUTPUT clienthost as dns
-            | table _time identity host ip dns interface
+            | eval device=identity." - ".serial." - ".host
+            | table _time device ip dns interface
           </query>
         </search>
         <option name="count">30</option>
@@ -295,14 +290,6 @@
         <option name="rowNumbers">false</option>
         <option name="totalsRow">false</option>
         <option name="wrap">true</option>
-        <format type="color" field="identity">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
-        <format type="color" field="host">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
         <format type="color" field="ip">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
@@ -312,6 +299,10 @@
           <scale type="sharedCategory"></scale>
         </format>
         <format type="color" field="dns">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="device">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>

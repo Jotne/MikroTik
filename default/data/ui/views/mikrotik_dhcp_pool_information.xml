@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik DHCP pool information</label>
   <description>Collected using Scripting. Usage in percent. If you add static release outside the pool,but within the subnet, i will give wrong percent usage.</description>
   <!--Version 
@@ -14,24 +14,23 @@
   3.4.0 Added span=1h to get more details
   3.7.0 Added dashboard version
   3.7.1 change dashboard tag from host to host_name
+  4.0.1 Changed to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik 
+      index=mikrotik 
       module=script
       script=pool
       pool="$Pool$"
-      | eval percent=used*100/total,
-             host_name=coalesce(identity,host)
-      | fields _time host used total percent pool host_name
+      | eval percent=used*100/total
+      | fields _time host used total percent pool identity serial
     </query>
   </search>
   <fieldset submitButton="false">
@@ -42,13 +41,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity."-".data
           | sort -count
         </query>
       </search>
@@ -80,8 +79,8 @@
         <search base="base_search">
           <query>
              search
-               host="$Host$"
-             | eval info=pool."(".host_name.")"
+               serial="$Serial$"
+             | eval info=pool."(".identity.")"
              | timechart span=1h limit=0 max(percent) by info
            </query>
         </search>

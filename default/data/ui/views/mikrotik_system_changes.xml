@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik System Changes</label>
   <description>Shows who changing what and when</description>
   <!--Version
@@ -14,29 +14,28 @@
   3.2.1 Fixed time
   3.3.0 Changed from fields to table
   3.7.0 Added dashboard version
+  4.0.1 Change to use serial, added type info
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=system
       eventtype=system_change
       change!="dhcp lease"
-      host="$Host$"
+      serial=$Serial$
       user="$User$"
       action="$Action$"
       change="$Change$"
       change!="dhcp lease"
-      | eval host_name=coalesce(identity,host)
-      | fields _time host host_name user action change
-      | sort -_time
+      | fields _time host identity user action change serial type
+      | sort 0 -_time
     </query>
   </search>
   <fieldset submitButton="false">
@@ -47,13 +46,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data."(".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data."(".count.")"
           | sort -count
         </query>
       </search>
@@ -129,18 +128,11 @@
       <table>
         <search base="base_search">
           <query>
-            | table _time host host_name user action change
+            | eval device=identity." - ".serial." - ".host
+            | table _time device type user action change
           </query>
         </search>
         <option name="count">100</option>
-        <format type="color" field="host">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
-        <format type="color" field="host_name">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
         <format type="color" field="user">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
@@ -150,6 +142,14 @@
           <scale type="sharedCategory"></scale>
         </format>
         <format type="color" field="change">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="device">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="type">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>

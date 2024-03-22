@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik PPPoE Connections</label>
   <description>Shows PPPoE connections/error</description>
   <!--Version 
@@ -6,27 +6,25 @@
   3.2.0 Added logout and added client_id info. Fixed sorting
   3.3.0 Changed from table to fields
   3.7.0 Added dashboard version
+  4.0.1 Changed to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=pppoe
       eventtype="pppoe_log*"
-      host="$Host$"
+      serial="$Serial$"
       user="$User$"
-      | eval 
-        host_name=coalesce(identity,host),
-        logged=if(eventtype="pppoe_login","in","out")
+      | eval logged=if(eventtype="pppoe_login","in","out")
       | rex "from (?&lt;client_id&gt;.*)"
-      | fields _time host host_name user src_ip time rcv_bytes sent_bytes eventtype logged client_id
+      | fields _time host identity user src_ip time rcv_bytes sent_bytes eventtype logged client_id serial
       | sort 0 -_time
     </query>
   </search>
@@ -38,13 +36,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
       </search>

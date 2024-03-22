@@ -1,27 +1,27 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik BGP Neighbors</label>
   <!--Version
   3.7.0 First version
+  4.0.1 Changed to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
+      index=mikrotik
       script=bgp
-      host="$Host$"
+      serial="$Serial$"
       remote_address="$Address$"
-      | eval host_name=coalesce(identity,host)
       | rex "local\.capabilities=(?&lt;local_capabilities&gt;.*?);local\.eor.*?remote.capabilities=(?&lt;remote_capabilities&gt;.*?);remote.eor"
       | makemv delim=";" local_capabilities
       | makemv delim=";" remote_capabilities
       | sort -_time
-      | fields status _time host_name host id name local_address local_* remote_* output_*
+      | fields status _time identity host id name local_address local_* remote_* output_* serail
     </query>
   </search>
   <fieldset submitButton="false">
@@ -32,13 +32,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -94,7 +94,8 @@
             | dedup host id
             | eval status=if(isnotnull(remote_as),"up","down")
             | search status IN ($Status$)
-            | table status _time host_name host id name local_address local_* remote_* output_*
+            | eval device=identity." - ".serial." - ".host
+            | table status _time device id name local_address local_* remote_* output_*
           </query>
         </search>
         <option name="count">100</option>
@@ -107,7 +108,7 @@
         <format type="color" field="status">
           <colorPalette type="map">{"up":#118832,"down":#D41F1F}</colorPalette>
         </format>
-        <format type="color" field="host_name">
+        <format type="color" field="device">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>

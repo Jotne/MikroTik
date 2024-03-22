@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik DNS Live usage</label>
   <description>Use this to see what units are online on the net.  It sees if a host requests a dns within a 5 minute window and counts it as 1</description>
   <!--Version
@@ -15,11 +15,12 @@
   3.0.2 Addded max value=1
   3.1.0 Added better src_ip counter
   3.7.0 Added dashboard version
+  4.0.1 Changed to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
@@ -31,18 +32,16 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search>
         <query>
-          `index`
-          sourcetype=mikrotik
+          index=mikrotik
           module=dns
           eventtype=dns_query
-          | eval host_name=coalesce(identity,host)
-          | eval data=host
-          | stats dc(src_ip) as count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats dc(src_ip) as count by data identity
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -55,12 +54,10 @@
       <label>Client</label>
       <search>
         <query>
-          `index`
-          sourcetype=mikrotik
+          index=mikrotik
           module=dns
           eventtype=dns_query
-          host="$Host$"
-          | eval host_name=coalesce(identity,host)
+          serial="$Serial$"
           | lookup dnslookup clientip as src_ip OUTPUT clienthost as src_host
           | eval src_host=coalesce(src_host,src_ip)
           | bucket span=5m _time
@@ -82,10 +79,9 @@
       <chart>
         <search>
           <query>
-            `index`
-            sourcetype=mikrotik
+            index=mikrotik
             module=dns
-            host="$Host$"
+            serial="$Serial$"
             eventtype=dns_query
             | eval host_name=coalesce(identity,host)
             | lookup dnslookup clientip as src_ip OUTPUT clienthost as src_host

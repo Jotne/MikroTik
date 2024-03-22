@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik Resources</label>
   <description>Data in percent of used resources</description>
   <!--Version 
@@ -13,11 +13,12 @@
   3.1.0 Added Sector Writes
   3.7.0 Change sector write view, fixed time span
   3.7.1 Added dashboard version
+  4.0.1 Change to use Serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
@@ -29,18 +30,22 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search>
         <query>
-          `index`
-          sourcetype=mikrotik
+          index=mikrotik
           module=script
           script=resource
+          | rex "serial=(?&lt;serial&gt;\S+)"
+          | rex "model=\"(?&lt;model&gt;[^\"]+)"
+          | rex "board-name=\"(?&lt;board_name&gt;[^\"]+)"
+          | rex "version=\"(?&lt;version&gt;[^\"]+)"
+          | rex "identity=\"(?&lt;identity&gt;[^\"]+)"
           | eval identity=coalesce(identity,host)
-          | eval data=host
+          | eval data=serial
           | stats count by data identity
-          | eval info=identity."-".data." (".count.")"
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -73,11 +78,15 @@
       <chart>
         <search>
           <query>
-            `index`
-            sourcetype=mikrotik
+            index=mikrotik
             module=script
             script=resource
-            host="$Host$"
+            | rex "serial=(?&lt;serial&gt;\S+)"
+            | rex "model=\"(?&lt;model&gt;[^\"]+)"
+            | rex "board-name=\"(?&lt;board_name&gt;[^\"]+)"
+            | rex "version=\"(?&lt;version&gt;[^\"]+)"
+            | rex "identity=\"(?&lt;identity&gt;[^\"]+)"
+            | search serial="$Serial$"
             | eval percent_memory=(total_memory-free_memory)*100/total_memory,
                    percent_hdd_space=(total_hdd_space-free_hdd_space)*100/total_hdd_space,
                    host=coalesce(identity,host)
@@ -97,11 +106,15 @@
       <chart>
         <search>
           <query>
-            `index`
-            sourcetype=mikrotik
+            index=mikrotik
             module=script
             script=resource
-            host="$Host$"
+            | rex "serial=(?&lt;serial&gt;\S+)"
+            | rex "model=\"(?&lt;model&gt;[^\"]+)"
+            | rex "board-name=\"(?&lt;board_name&gt;[^\"]+)"
+            | rex "version=\"(?&lt;version&gt;[^\"]+)"
+            | rex "identity=\"(?&lt;identity&gt;[^\"]+)"
+            | search serial="$Serial$"
             | streamstats current=f last(write_sect_total) as prev by host
             | eval diff=prev - write_sect_total
             | eval diff=if(diff&lt;0,0,diff)

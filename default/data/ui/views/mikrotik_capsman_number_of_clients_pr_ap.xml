@@ -1,27 +1,26 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>Mikrotik CAPsMAN Number of Clients pr AP</label>
   <!--Version 
   3.1.0 First version
   3.3.0 Changed from table to fields
   3.7.0 Added dashboard version
+  4.0.1 Changed to serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       script="caps-man"
       NOT capsregistered
-      host="$Host$"
+      serial="$Serial$"
       ap="$AP$"
-      | eval host_name=coalesce(identity,host)
-      | fields _time host host_name ap counter
+      | fields _time host identity ap counter serial
     </query>
   </search>
   <fieldset submitButton="false">
@@ -32,13 +31,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity."-".data." (".count.")"
           | sort -count
         </query>
       </search>

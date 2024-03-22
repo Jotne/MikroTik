@@ -3,6 +3,19 @@ https://forum.mikrotik.com/viewtopic.php?t=179960
 
 # Version History
 
+# 4.0 (21.03.2024)
+# Changed to use serial in all dashboard
+# Changed many regex due to added serial
+# Changed to use MikroTik index directly without macro
+# Removed host_name and use identity in all dashboard
+# Change device_table script to update every hour, not every day
+# Fixed form version.  Should always be 1.1
+# Added DHCP lookup of client name in mikrotik_accounting_traffic
+# Fixed romon info extraction. Use host_name in graphs in mikrotik_admin_user_login
+# Joined multipe IP for the same host, Fixed list for multiple firmware, fixed errors in varios dashboards in mikrotik_device_list
+# Added Time Span and separated IP address from name with - in mikrotik_dns_request.
+# Rewritten calcualtion to give correctly bps and now works with multiple hosts, Added graph to show total bytex tx/rx in mikrotik_interface_traffic
+
 # 3.9 (13.06.2023)
 # Added discovery type to "MikroTik Neighbor"
 # Added new version of "MikroTik DHCP layout"

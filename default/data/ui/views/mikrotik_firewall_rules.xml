@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik Firewall Rules</label>
   <description>Data collected from Syslog</description>
   <!--Version
@@ -20,21 +20,21 @@
   3.7.1 Added connection state/mark
   3.8.0 Added packet mark
   3.8.1 Added new panel with optional input
+  4.0.1 Changed to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=firewall
       $Free$
-      host="$host$"
+      serial="$Serial$"
       rule="$rule$"
       chain="$chain$"
       in_if="$in_if$"
@@ -50,8 +50,7 @@
         packet_mark="$packet_mark$"
         connection_mark="$connection_mark$"
         connection_state="$connection_state$"
-      | eval host_name=coalesce(identity,host)
-      | fields _time host rule chain in_if out_if src_mac protocol src_ip dest_ip src_port dest_port host_name packet_mark connection_mark connection_state
+      | fields _time host rule chain in_if out_if src_mac protocol src_ip dest_ip src_port dest_port identity packet_mark connection_mark connection_state serial
     </query>
   </search>
   <search base="base_search">
@@ -72,13 +71,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -291,7 +290,7 @@
     <panel>
       <input type="dropdown" token="Sort">
         <label>Sort By</label>
-        <choice value="host">Host</choice>
+        <choice value="device">Device</choice>
         <choice value="rule">Rule</choice>
         <choice value="chain">Chain</choice>
         <choice value="in_if">In Interface</choice>
@@ -314,6 +313,7 @@
           <query>
             | iplocation src_ip
             | eval City=if(City="","Unknown",City)
+            | eval device=identity." - ".serial." - ".host
             | timechart count by $Sort$ limit=20 useother=false usenull=false
           </query>
         </search>
@@ -329,6 +329,7 @@
         <search base="base_search">
           <query>| iplocation src_ip
             | eval City=if(City="","Unknown",City)
+            | eval device=host_name." - ".serial." - ".host
             | stats count by $Sort$</query>
         </search>
         <option name="charting.chart">pie</option>
@@ -345,7 +346,8 @@
             | iplocation src_ip
             | eval City=if(City="","Unknown",City)
             | rex field=rule "^(?&lt;type&gt;.)(?&lt;dir&gt;.)_(?&lt;act&gt;.+?)_"
-            | table _time host type dir act rule chain in_if out_if src_mac protocol src_ip src_port dest_ip dest_port packet_mark connection_mark connection_state City Country
+            | eval device=identity." - ".serial." - ".host
+            | table _time device type dir act rule chain in_if out_if src_mac protocol src_ip src_port dest_ip dest_port packet_mark connection_mark connection_state City Country
             | sort -_time</query>
         </search>
         <option name="count">50</option>
@@ -417,7 +419,7 @@
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>
-        <format type="color" field="host">
+        <format type="color" field="device">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>

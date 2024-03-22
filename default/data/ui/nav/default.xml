@@ -3,7 +3,7 @@
     <view name="mikrotik_device_list" default='true'/>
     <view name="mikrotik_admin_user_login"/>
     <view name="mikrotik_system_changes"/>
-    <view name="mikrotik_cmd_history"/> 
+    <view name="mikrotik_cmd_history"/>
     <view name="mikrotik_uptime"/>
     <view name="mikrotik_resources"/>
     <view name="mikrotik_health"/>
@@ -13,7 +13,6 @@
   <collection label="Connections">
     <view name="mikrotik_dynamic_nat_rules"/>
     <view name="mikrotik_hotspot"/>
-    <view name="mikrotik_web_proxy"/>
     <view name="mikrotik_wireguard_errror"/>
     <view name="mikrotik_vpn_connections"/>
     <view name="mikrotik_ppp_connections"/>
@@ -38,7 +37,7 @@
     <view name="mikrotik_route_list"/>
     <view name="mikrotik_ospf_neighbors"/>
     <view name="mikrotik_bgp_neighbors"/>
-  </collection>  
+  </collection>
   <collection label="Traffic">
     <view name="mikrotik_firewall_rules"/>
     <view name="mikrotik_accounting_traffic"/>
@@ -47,6 +46,7 @@
   <collection label="Wifi">
     <view name="mikrotik_wifi_connection"/>
     <view name="mikrotik_wifi_strength"/>
+    <view name="mikrotik_wifi_error_connections"/>
   </collection>
   <collection label="CAPsMAN">
     <view name="mikrotik_capsman_wifi_connection"/>
@@ -59,7 +59,7 @@
     <view name="mikrotik_interface_changes"/>
     <view name="mikrotik_netwatch"/>
   </collection>
-  <view name="information"/>  
+  <view name="information"/>
   <view name="search"/>
   <view name="alerts"/>
   <view name="reports"/>

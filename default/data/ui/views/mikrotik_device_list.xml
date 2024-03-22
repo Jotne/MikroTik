@@ -1,41 +1,25 @@
-<form version="4.0" theme="dark">
+<form theme="dark" version="1.1">
+  <tags>mobile</tags>
   <label>MikroTik Device List</label>
   <!--Version
-  2.4.1 Added sparkline and set to 24 hour
-  2.5.0
-  2.6.1 Added better sparkline
-  2.6.2 Added identity
-  2.7.1 Added Time picker for "MikroTik Device List"
-  2.8.0 Added board_name
-  2.9.0 Added itentity
-  3.0.0 Fixed extraction from ROS v7
-  3.0.1 Fixed missing identity
-  3.0.2 Added KV store auto update.
-  3.1.0 Added update to KV system
-  3.3.0 Added firmware info
-  3.7.0 Added dashboard version
-  3.7.1 Removed output lookup, not needed
-  3.7.2 Added script version
-  4.0.0 Removed command logs for NTP info
-  4.0.1 Removed more log info
-  4.0.2 Fixed version info
+  4.0.1 Joined multipe IP for the same host
+  4.0.2 Fixed list for multiple firmware
+  4.0.3 Change to use serial and fixed errors in varios dashboards
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="KV_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=script
       script=sysinfo
       NOT "log info"
-      | dedup host
-      | rex "version=\"(?&lt;version&gt;[^\"]*)\" board-name=\"(?&lt;board_name&gt;[^\"]*)\" model=\"(?&lt;model&gt;[^\"]*)\" serial=(?&lt;serial&gt;\S*) identity=\"(?&lt;identity&gt;[^\"]*)\"" 
+      | dedup host 
       | table  host identity serial model board_name version
       | fillnull value="-"
       | inputlookup append=true device_table
@@ -58,12 +42,11 @@
         <title>To get "Accouning Traffic" and "mangle rules" to work, this need to be turned off</title>
         <search>
           <query>
-            `index`
-            sourcetype=mikrotik
+            index=mikrotik
             module=script
             script=traffic
-            | eval identity=coalesce(identity,host)
-            | stats latest(fasttrack) as fasttrack by host identity
+            | eval host_name=coalesce(identity,host)
+            | stats latest(fasttrack) as fasttrack by host host_name
             | where fasttrack!=0
           </query>
           <earliest>-15m</earliest>
@@ -92,57 +75,17 @@
     </panel>
   </row>
   <row>
-    <panel depends="$panel_show1$">
-      <title>Routers listed here has to old script</title>
-      <table>
-        <title>Some dashboard my not work correctly (routing needs 4.9)</title>
-        <search>
-          <query>
-            `index`
-            sourcetype=mikrotik
-            script=version
-            | eval identity=coalesce(identity,host)
-            | stats latest(ver) as ver by host identity
-            | where ver&lt;4.9
-          </query>
-          <earliest>-15m</earliest>
-          <latest>now</latest>
-          <progress>
-            <condition match="'job.resultCount' &gt; 0">
-              <set token="panel_show1">true</set>
-            </condition>
-            <condition>
-              <unset token="panel_show1"></unset>
-            </condition>
-          </progress>
-        </search>
-        <option name="count">100</option>
-        <option name="dataOverlayMode">none</option>
-        <option name="drilldown">none</option>
-        <option name="percentagesRow">false</option>
-        <option name="rowNumbers">false</option>
-        <option name="totalsRow">false</option>
-        <option name="wrap">true</option>
-        <format type="color" field="host">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
-      </table>
-    </panel>
-  </row>
-  <row>
     <panel depends="$panel_show2$">
       <title>NTP are not running on host listed below.</title>
       <table>
         <title>Time may not be correct and date of logs may be out of sync</title>
         <search>
           <query>
-            `index`
-            sourcetype=mikrotik
+            index=mikrotik
             earliest=-1@h latest=now
             script=ntp NOT "log info"
-            | eval identity=coalesce(identity,host)
-            | stats latest(status) as status by host identity
+            | eval host_name=coalesce(identity,host)
+            | stats latest(status) as status by host_name
             | search status!=synchronized
           </query>
           <progress>
@@ -159,7 +102,7 @@
         <option name="drilldown">cell</option>
         <option name="rowNumbers">false</option>
         <option name="wrap">true</option>
-        <format type="color" field="host">
+        <format field="host" type="color">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>
@@ -168,30 +111,33 @@
   </row>
   <row>
     <panel>
-      <title>List of devices</title>
+      <title>List of devices (+ behind ip, shows IP has changed)</title>
       <table>
-      <title>May take some hours to get populated.</title>
+        <title>Script version listed in red should have their local script updated to confirm with latest version of the app</title>
         <search>
           <query>
-            `index`
-            sourcetype=mikrotik
+            index=mikrotik
             module=script
             script=sysinfo OR script=version
             NOT "log info"
+            | rex "serial=(?&lt;serial&gt;\S+)"
+            | rex "model=\"(?&lt;model&gt;[^\"]+)"
+            | rex "board-name=\"(?&lt;board_name&gt;[^\"]+)"
+            | rex "version=\"(?&lt;version&gt;[^\"]+)"
+            | rex "identity=\"(?&lt;identity&gt;[^\"]+)"
             | transaction host maxspan=5m
             | search script=sysinfo 
-            | eval identity=coalesce(identity,host)
-            | rex "version=\"(?&lt;RouterOS&gt;[^\"]*)\" board-name=\"(?&lt;board_name&gt;[^\"]*)\" model=\"(?&lt;model&gt;[^\"]*)\" serial=(?&lt;serial&gt;\S*) identity=\"(?&lt;identity&gt;[^\"]*)\"" 
+            | eval RouterOS=version
             | fillnull value="-"
-            | stats sparkline count latest(RouterOS) as RouterOS latest(ver) as ver by host identity serial model board_name factory_firmware current_firmware upgrade_firmware
-            | rename sparkline AS "uptime" ver AS script_ver
+            | stats sparkline as uptime count values(RouterOS) as RouterOS latest(ver) as script_ver values(host) as host latest(upgrade_firmware) as upgrade_firmware latest(current_firmware) as current_firmware by identity serial model board_name factory_firmware 
             | search NOT factory_firmware=-
-            | table host identity serial model board_name RouterOS count uptime factory_firmware current_firmware upgrade_firmware script_ver</query>
+            | eval host=if(mvcount(host)&gt;1,mvindex(host, -1)." +",host)
+            | eval device=identity." - ".serial." - ".host
+            | table  device model board_name RouterOS count uptime factory_firmware current_firmware upgrade_firmware script_ver</query>
           <earliest>$earliest$</earliest>
           <latest>$latest$</latest>
         </search>
         <option name="count">20</option>
-        <option name="refresh.display">progressbar</option>
         <format type="color" field="RouterOS">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
@@ -217,6 +163,10 @@
           <scale type="sharedCategory"></scale>
         </format>
         <format type="color" field="script_ver">
+          <colorPalette type="minMidMax" maxColor="#118832" midColor="#118832" minColor="#D41F1F"></colorPalette>
+          <scale type="minMidMax" midValue="5.6"></scale>
+        </format>
+        <format type="color" field="device">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>

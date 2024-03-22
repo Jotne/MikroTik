@@ -1,11 +1,9 @@
 <form version="1.1" theme="dark">
-  <label>MikroTik PPPoE Errors</label>
-  <description>Shows PPPoE "authentication failed"</description>
+  <label>MikroTik Wifi error connections</label>
+  <description>Devices trying to connect with wrong password.</description>
   <!--Version 
-  3.0.0 First version
-  3.3.0 Changed from table to fields
-  3.7.0 Added dashboard version
-  4.0.1 Changed to use serail
+  4.0.0 First version
+  4.0.1 Changed to user serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
@@ -17,19 +15,22 @@
   <search id="base_search">
     <query>
       index=mikrotik
-      module=pppoe
-      eventtype="pppoe_authentication_failed" 
+      module=wireless
+      "unicast key exchange timeout"
       serial="$Serial$"
-      user="$User$"
-      | sort -_time
-      | fields _time host identity user serial
+      mac="$Client$"
+      | rex "signal strength (?&lt;strength&gt;\S+)"
+      | lookup dhcp_table mac output dns device_id
+      | eval client = coalesce (dns, device_id, mac)
+      | fillnull value="-" 
+      | fields _time host identity identity mac device_id strength serial
     </query>
   </search>
   <fieldset submitButton="false">
     <input type="time">
       <label></label>
       <default>
-        <earliest>-24h@h</earliest>
+        <earliest>-30d@d</earliest>
         <latest>now</latest>
       </default>
     </input>
@@ -40,7 +41,7 @@
           | eval data=serial
           | stats count by data identity
           | eval info=identity."-".data." (".count.")"
-          | sort -count
+          | sort - count
         </query>
       </search>
       <choice value="*">Any</choice>
@@ -48,13 +49,14 @@
       <fieldForValue>data</fieldForValue>
       <default>*</default>
     </input>
-    <input type="dropdown" token="User">
-      <label>User</label>
+    <input type="dropdown" token="Client">
+      <label>Client</label>
       <search base="base_search">
         <query>
-          | eval data=user
-          | stats count by data
-          | eval info=data." (".count.")"
+          | eval data=mac
+          | stats count by data device_id
+          | eval info = device_id."-".data." (".count.")"
+          | dedup data
           | sort -count
         </query>
       </search>
@@ -69,12 +71,16 @@
       <chart>
         <search base="base_search">
           <query>
-            | timechart count by user limit=10
+            | eval host=identity." (".host.")"
+            | eval client = device_id." (".mac.")"
+            | timechart count by client
           </query>
         </search>
         <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
         <option name="charting.chart">column</option>
         <option name="charting.chart.stackMode">stacked</option>
+        <option name="height">300</option>
       </chart>
     </panel>
   </row>
@@ -83,23 +89,31 @@
       <table>
         <search base="base_search">
           <query>
-            | table _time host user
+            | eval host_name=coalesce(identity,host)
+            | eval device=identity." - ".serial." - ".host
+            | eval client = device_id." (".mac.")"
+            | table _time device client strength
+            | sort -_time
           </query>
         </search>
-        <option name="count">20</option>
+        <option name="count">100</option>
         <option name="dataOverlayMode">none</option>
         <option name="drilldown">none</option>
         <option name="percentagesRow">false</option>
         <option name="rowNumbers">false</option>
         <option name="totalsRow">false</option>
         <option name="wrap">true</option>
-        <format type="color" field="host">
+        <format type="color" field="device">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>
-        <format type="color" field="user">
+        <format type="color" field="client">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="strength">
+          <colorPalette type="list">[#D41F1F,#CBA700,#118832]</colorPalette>
+          <scale type="threshold">-80,-60</scale>
         </format>
       </table>
     </panel>

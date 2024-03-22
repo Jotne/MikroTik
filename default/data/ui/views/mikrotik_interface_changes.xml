@@ -1,5 +1,5 @@
-<form version="3.9" theme="dark">
-  <label>MikroTik Interface Changes</label>
+<form version="1.1" theme="dark">
+  <label>MikroTik Interface status Changes</label>
   <!--Version 
   2.8.0
   2.8.1 Fixed sorting
@@ -8,28 +8,27 @@
   3.3.0 Change table format
   3.3.1 Changed from table to fields
   3.7.0 Added dashboard version
+  4.0.1 Changed to use serial, fixed table
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=interface
       | fillnull value="-"
       | search 
-        host="$Host$"
+        serial="$Serial$"
         int="$Int$"
         change="$Change$"
         speed="$Speed$"
         duplex="$Duplex$"
-      | eval host_name=coalesce(identity,host)
-      | fields _time host host_name int change speed duplex
+      | fields _time host identity int change speed duplex serial
       | sort -_time
     </query>
   </search>
@@ -41,13 +40,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity."-".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -154,14 +153,15 @@
   <row>
     <panel>
       <table>
-        <search base="base_search"></search>
+        <search base="base_search">
+          <query>
+           | eval device=identity." - ".serial." - ".host
+           | table _time device int change speed duplex
+          </query>
+        </search>
         <option name="count">50</option>
         <option name="wrap">true</option>
-        <format type="color" field="host">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
-        <format type="color" field="host_name">
+        <format type="color" field="device">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>

@@ -1,4 +1,4 @@
-<form version="4.0" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik Interface Traffic</label>
   <!--Version 
   2.8.1 First version
@@ -9,23 +9,22 @@
   3.7.0 Added dashboard version
   3.8.0 Rounded results
   4.0.0 Rewritten calcualtion to give correctly bps and now works with multiple hosts
-  4.1.0 Added graph to show total bytex tx/rx
+  4.0.1 Added graph to show total bytex tx/rx
+  4.0.2 Changed to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       script=if_traffic
-      host="$Host$"
+      serial="$Serial$"
       name="$Interface$"
-      | eval host_name=coalesce(identity,host)
       | sort 0  _time
       | streamstats current=f  last(rx_byte) as rx_prev last(tx_byte) as tx_prev by name host
       | eval 
@@ -33,7 +32,7 @@
         tx=if(tx_prev&gt;tx_byte,tx_byte,tx_byte-tx_prev)
       | rename name as interface
       | fillnull value="-" comment
-      | fields _time host interface host_name rx tx comment rx_byte tx_byte
+      | fields _time host interface identity rx tx comment rx_byte tx_byte serial
     </query>
   </search>
   <init>
@@ -47,13 +46,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -113,9 +112,9 @@
         <title>RX Bytes</title>
         <search base="base_search">
           <query>
-            | stats earliest(rx_byte) as e_rx_byte latest(rx_byte) as l_rx_byte earliest(tx_byte) as e_tx_byte latest(tx_byte) as l_tx_byte by host_name interface
+            | stats earliest(rx_byte) as e_rx_byte latest(rx_byte) as l_rx_byte earliest(tx_byte) as e_tx_byte latest(tx_byte) as l_tx_byte by identity interface
             | eval tot_rx_byte=(l_rx_byte - e_rx_byte)$size$, tot_tx_byte=(l_tx_byte - e_tx_byte)$size$
-            | eval info=host_name."-".interface
+            | eval info=identity."-".interface
             | stats sum(tot_rx_byte) by  info
           </query>
         </search>
@@ -127,9 +126,9 @@
         <title>TX Bytes</title>
         <search base="base_search">
           <query>
-            | stats earliest(rx_byte) as e_rx_byte latest(rx_byte) as l_rx_byte earliest(tx_byte) as e_tx_byte latest(tx_byte) as l_tx_byte by host_name interface
+            | stats earliest(rx_byte) as e_rx_byte latest(rx_byte) as l_rx_byte earliest(tx_byte) as e_tx_byte latest(tx_byte) as l_tx_byte by identity interface
             | eval tot_rx_byte=(l_rx_byte - e_rx_byte)$size$, tot_tx_byte=(l_tx_byte - e_tx_byte)$size$
-            | eval info=host_name."-".interface
+            | eval info=identity."-".interface
             | stats sum(tot_tx_byte) by  info
           </query>
         </search>
@@ -142,7 +141,7 @@
       <chart>
         <search base="base_search">
           <query>
-            | eval info=host_name."-".interface."(".comment.")"
+            | eval info=identity."-".interface."(".comment.")"
             | timechart minspan=5m $Span$ eval(round(avg(rx)$size$/5/60*8,2)) as RX eval(round(avg(tx)$size$/5/60*8,2)) as TX by info limit=52
           </query>
         </search>

@@ -1,28 +1,27 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik Netwatch</label>
   <description>This Dashboard shows logging from Netwatch function.  Can be used to monitor Wireguard etc.  Last_chage =  # hour since status change</description>
   <!--Version 
   3.6.0 First version
   3.7.0 Added dashboard version
+  4.0.1 Changed to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=script
       script=netwatch
       status=*
-      host=$Host$
-      | eval host_name=coalesce(identity,host)
+      serial=$Serial$
       | eval last_change=round((now() - strptime(since,"%b/%d/%Y %H:%M:%S"))/3600,2)
-      | fields _time host host_name watch_host comment status interval last_change
+      | fields _time host identity watch_host comment status interval last_change serial
       | sort- _time
     </query>
   </search>
@@ -34,13 +33,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity."-".data." (".count.")"
           | sort -count
         </query>
       </search>
@@ -113,7 +112,8 @@
         <search base="base_search">
           <query>
             | search status IN ($Status$)
-            | table _time host watch_host comment status interval last_change
+            | eval device=identity." - ".serial." - ".host
+            | table _time device watch_host comment status interval last_change
           </query>
         </search>
         <option name="count">100</option>
@@ -123,7 +123,7 @@
         <option name="rowNumbers">false</option>
         <option name="totalsRow">false</option>
         <option name="wrap">true</option>
-        <format type="color" field="host">
+        <format type="color" field="device">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>

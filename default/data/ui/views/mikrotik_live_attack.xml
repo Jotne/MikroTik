@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik Live attack</label>
   <description>Select the rule that is used to block form the outside IP (often the last rule)</description>
   <!--Version 
@@ -14,26 +14,25 @@
   3.3.0 Changed from table to fields
   3.6.0 Fixed map
   3.7.0 Added dashboard version
+  4.0.1 Changed to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=firewall
-      | eval host_name=coalesce(identity,host)
-      | fields _time host dest_port src_ip protocol rule host_name
+      | fields _time host dest_port src_ip protocol rule host_name serial
       | iplocation src_ip
       | replace "" with "Unknown" in City,Country
       | fields - Region
       | search 
-          host="$Host$"
+          serial="$Serial$"
           rule="$Rule$"
           protocol="$protocol$"
           dest_port="$port$"
@@ -48,13 +47,13 @@
         <latest>rt</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
       </search>

@@ -1,4 +1,4 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik Device Traffic</label>
   <description>Needs script version &gt;= 4.8 to collect correct data. (Using Kid Control)</description>
   <!--Version
@@ -8,21 +8,22 @@
   3.8.0 Change from bytes to delta_bytes in table
   3.8.1 Removed 0 fields to make math correct
   4.0.0 Fixed table if router is rebooted or counter rest
+  4.0.1 Added DHCP lookup of client name
+  4.0.2 Changed to use serial, fixed naming of clients
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=script
       script=kids
-      host="$Host$"
+      serial="$Serial$"
       ip_address=$Client$
       | where bytes_up&gt;0 and bytes_down&gt;0
       | where rate_down&gt;0 OR rate_up&gt;0
@@ -32,11 +33,13 @@
         delta_up=if(last_up&lt;bytes_up,last_up,last_up-bytes_up)
       | eval bytes=if("$direction$"=="in",delta_up,delta_down)
       | eval bytes=round(bytes$size$,1)
-      | eval  host_name=coalesce(identity,host)
-      | lookup dnslookup clientip as ip_address OUTPUT clienthost as client
-      | eval client=if(isnull(client),ip_address,client)
+      | lookup dhcp_table ip as ip_address output device_id as client1
+      | lookup dnslookup clientip as ip_address OUTPUT clienthost as client2
+      | eval client1=if(client1="",null,client1."(DHCP)")
+      | eval client2=if(client2="",null,client2."(DNS)")
+      | eval client=coalesce(client2, client1, ip_address)
       | rename user as group
-      | fields _time host ip_address bytes host_name group client activity blocked limited dynamic bytes_down bytes_up idle_time mac_address rate_down rate_up test delta_*
+      | fields _time host ip_address bytes identity group client activity blocked limited dynamic bytes_down bytes_up idle_time mac_address rate_down rate_up test delta_* serial
     </query>
   </search>
   <fieldset submitButton="false">
@@ -47,14 +50,14 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <choice value="*">Any</choice>
       <search base="base_search">
         <query>
-          | eval data = host
-          | stats sum(bytes) as count by data host_name
-          | eval info=host_name." (".count.")"
+          | eval data = serial
+          | stats sum(bytes) as count by data identity
+          | eval info=identity." - ".data." (".count.")"
           | sort -info
         </query>
       </search>
@@ -140,8 +143,9 @@
       <table>
         <search base="base_search">
           <query>
-            | rename delta_up as delta_bytes_up, delta_down as delta_bytes_down, 
-            | table _time host host_name ip_address mac_address client group activity blocked limited dynamic delta_* rate_down rate_up idle_time
+            | rename delta_up as delta_bytes_up, delta_down as delta_bytes_down
+            | eval device=identity." - ".serial." - ".host
+            | table _time device ip_address mac_address client group activity blocked limited dynamic delta_* rate_down rate_up idle_time
             $last$
           </query>
         </search>
@@ -164,6 +168,10 @@
         </format>
         <format type="color" field="dynamic">
           <colorPalette type="map">{"false":#DC4E41,"true":#53A051}</colorPalette>
+        </format>
+        <format type="color" field="device">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
         </format>
       </table>
     </panel>

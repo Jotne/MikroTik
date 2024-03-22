@@ -1,28 +1,27 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik PPPoE Usage</label>
   <description>Shows PPPoE bytes sent/recieved by user based on logout information</description>
   <!--Version 
   3.0.0 First version
   3.3.0 Changed from table to fields
   3.7.0 Added dashboard version
+  4.0.1 Changed to use serial
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=pppoe
       eventtype="pppoe_logout"
-      host="$Host$"
+      serial="$Serial$"
       user="$User$"
-      | eval host_name=coalesce(identity,host)
-      | fields _time host host_name user src_ip time rcv_bytes sent_bytes eventtype
+      | fields _time host identity user src_ip time rcv_bytes sent_bytes eventtype serial
     </query>
   </search>
   <fieldset submitButton="false">
@@ -33,13 +32,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data." (".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data." (".count.")"
           | sort -count
         </query>
       </search>

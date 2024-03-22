@@ -1,29 +1,29 @@
-<form version="3.9" theme="dark">
+<form version="1.1" theme="dark">
   <label>MikroTik CMD History</label>
   <description>Needs routerOS &gt;= v7 (new commands are only shown every 5 min)</description>
   <!--Version
   3.4.0 First version
   3.4.1 Fixed sorting
   3.7.0 Added dashboard version
+  4.0.1 Change to use serial, fix identity
   ######################################################
   #
   # Mikrotik Add-On for Splunk
   #
-  # Created by Jotne 2023
+  # Created by Jotne 2024
   #
   ######################################################
   -->
   <search id="base_search">
     <query>
-      `index`
-      sourcetype=mikrotik
+      index=mikrotik
       module=script
-      host=$Host$
+      serial=$Serial$
       | rex ";time.*?;undo=(?&lt;undo&gt;.*)"
       | rex mode=sed "s/;time.*// s/;undoable=true// s/;time.*// s/.id.*?;redo=//g"
-      | transaction host startswith="StartCMD" endswith="EndCMD" maxspan=1s
-      | rex mode=sed "s/script,info MikroTik: //g s/StartCMD\n// s/EndCMD// "
-      | eval host_name=coalesce(identity,host)
+      | transaction host serial startswith="StartCMD" endswith="EndCMD" maxspan=1s
+      | lookup device_table serial OUTPUT identity
+      | rex mode=sed "s/script,info.*?MikroTik: //g s/StartCMD\n// s/EndCMD// "
       | eval id=mvindex(id, 0)
       | rename _raw as cmd
       | search by="$User$"
@@ -32,7 +32,7 @@
       | bin span=2m _time
       | eval dec_id=tonumber(id,16)
       | sort -_time -dec_id
-      | fields _time host host_name id by action cmd undoable undo
+      | fields _time host identity id by action cmd undoable undo serial
     </query>
   </search>
   <fieldset submitButton="false">
@@ -43,13 +43,13 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="Host">
+    <input type="dropdown" token="Serial">
       <label>Host</label>
       <search base="base_search">
         <query>
-          | eval data=host
-          | stats count by data host_name
-          | eval info=host_name."-".data."(".count.")"
+          | eval data=serial
+          | stats count by data identity
+          | eval info=identity." - ".data."(".count.")"
           | sort -count
         </query>
       </search>
@@ -100,7 +100,7 @@
         <option name="charting.axisTitleX.visibility">collapsed</option>
         <option name="charting.chart">column</option>
         <option name="charting.chart.stackMode">stacked</option>
-        <option name="height">400</option>
+        <option name="height">398</option>
       </chart>
     </panel>
   </row>
@@ -109,7 +109,8 @@
       <table>
         <search base="base_search">
           <query>
-            | table _time host host_name id by action cmd undoable undo
+            | eval device=identity." - ".serial." - ".host
+            | table _time device id by action cmd undoable undo
           </query>
         </search>
         <option name="count">100</option>
@@ -119,14 +120,6 @@
         <option name="rowNumbers">false</option>
         <option name="totalsRow">false</option>
         <option name="wrap">true</option>
-        <format type="color" field="host">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
-        <format type="color" field="host_name">
-          <colorPalette type="sharedList"></colorPalette>
-          <scale type="sharedCategory"></scale>
-        </format>
         <format type="color" field="id">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
@@ -140,6 +133,10 @@
           <scale type="sharedCategory"></scale>
         </format>
         <format type="color" field="undoable">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="device">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>
