@@ -5,6 +5,7 @@
   4.0.1 Joined multipe IP for the same host
   4.0.2 Fixed list for multiple firmware
   4.0.3 Change to use serial and fixed errors in varios dashboards
+  4.0.4 Added info about devices not sending with serial number
   ######################################################
   #
   # Mikrotik Add-On for Splunk
@@ -103,6 +104,40 @@
         <option name="rowNumbers">false</option>
         <option name="wrap">true</option>
         <format field="host" type="color">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show3$">
+      <title>Devices without serial</title>
+      <table>
+        <title>Devices listed below do not have the serial set in their logging config.  Se section 2a here: https://forum.mikrotik.com/viewtopic.php?t=179960</title>
+        <search>
+          <query>
+            index=mikrotik
+            NOT serial=*
+            | stats count latest(_raw) as Latest_Message by host
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show3">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show3"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="host">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
         </format>

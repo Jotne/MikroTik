@@ -12,6 +12,7 @@
   3.7.0 Added dashboard version
   3.7.1 Added ?: to regex
   4.0.1 Change to user serial
+  4.0.2 Added span=1h
   ######################################################
   #
   # Mikrotik Add-On for Splunk
@@ -81,7 +82,7 @@
         <search base="base_search">
           <query>
             | eval info=identity." - ".serial
-            | timechart avg(utime) by info
+            | timechart span=1h avg(utime) by info
           </query>
         </search>
         <option name="charting.axisTitleX.visibility">collapsed</option>
