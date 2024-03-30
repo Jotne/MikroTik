@@ -6,6 +6,9 @@
   4.0.2 Fixed list for multiple firmware
   4.0.3 Change to use serial and fixed errors in varios dashboards
   4.0.4 Added info about devices not sending with serial number
+  4.0.5 Added time for last data with no serial
+  4.0.6 Change to use latest name to work better if identity of router is changed
+  4.0.7 Change to use serail in transaction to fix router behind nat and color of ver column
   ######################################################
   #
   # Mikrotik Add-On for Splunk
@@ -119,7 +122,7 @@
           <query>
             index=mikrotik
             NOT serial=*
-            | stats count latest(_raw) as Latest_Message by host
+            | stats  latest(_time) as _time latest(_raw) as Latest_Message count by host
           </query>
           <progress>
             <condition match="'job.resultCount' &gt; 0">
@@ -160,15 +163,17 @@
             | rex "board-name=\"(?&lt;board_name&gt;[^\"]+)"
             | rex "version=\"(?&lt;version&gt;[^\"]+)"
             | rex "identity=\"(?&lt;identity&gt;[^\"]+)"
-            | transaction host maxspan=5m
+            | transaction serial maxspan=5m
             | search script=sysinfo 
             | eval RouterOS=version
             | fillnull value="-"
-            | stats sparkline as uptime count values(RouterOS) as RouterOS latest(ver) as script_ver values(host) as host latest(upgrade_firmware) as upgrade_firmware latest(current_firmware) as current_firmware by identity serial model board_name factory_firmware 
+            | stats sparkline as uptime count values(RouterOS) as RouterOS latest(ver) as script_ver values(host) as host latest(upgrade_firmware) as upgrade_firmware latest(current_firmware) as current_firmware latest(identity) as identity by serial model board_name factory_firmware 
             | search NOT factory_firmware=-
             | eval host=if(mvcount(host)&gt;1,mvindex(host, -1)." +",host)
             | eval device=identity." - ".serial." - ".host
-            | table  device model board_name RouterOS count uptime factory_firmware current_firmware upgrade_firmware script_ver</query>
+            | table  device model board_name RouterOS count uptime factory_firmware current_firmware upgrade_firmware script_ver
+            | sort device
+            </query>
           <earliest>$earliest$</earliest>
           <latest>$latest$</latest>
         </search>
@@ -198,8 +203,8 @@
           <scale type="sharedCategory"></scale>
         </format>
         <format type="color" field="script_ver">
-          <colorPalette type="minMidMax" maxColor="#118832" midColor="#118832" minColor="#D41F1F"></colorPalette>
-          <scale type="minMidMax" midValue="5.6"></scale>
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
         </format>
         <format type="color" field="device">
           <colorPalette type="sharedList"></colorPalette>
