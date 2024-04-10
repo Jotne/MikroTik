@@ -1,6 +1,6 @@
 <form version="1.1" theme="dark">
-  <label>MikroTik Admin user login</label>
-  <description>Shows ok/blocked admin access to ther router</description>
+  <label>MikroTik System user login</label>
+  <description>Shows ok/blocked access to ther router</description>
   <!--Version 
   2.4.0
   2.5.0
@@ -15,6 +15,7 @@
   3.6.0 Added color
   3.7.0 Added dashboard version
   4.0.1 Change to user serail as main ID. Fixed romon info extraction. Use host_name in graphs
+  4.0.2 Added info about user logging out.
   ######################################################
   #
   # Mikrotik Add-On for Splunk
@@ -27,7 +28,7 @@
     <query>
       index=mikrotik
       module=system
-      eventtype IN (adm_user_login_failure,*user_logged_in)
+      eventtype=system_user_log*
       serial=$Serial$
       user="$User$"
       | fields _time host user system user_ip eventtype identity serial
@@ -108,7 +109,7 @@
   </row>
   <row>
     <panel depends="$panel_show2$">
-      <title>2. Login OK</title>
+      <title>2. Logged inn</title>
       <chart>
         <search base="base_search">
           <query>
@@ -122,6 +123,32 @@
             </condition>
             <condition>
               <unset token="panel_show2"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="height">400</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show3$">
+      <title>3. Logged out</title>
+      <chart>
+        <search base="base_search">
+          <query>
+            | search eventtype=*user_logged_out
+            | eval info=user."-".system."-".identity
+            | timechart $Span$ count by info  limit=0
+          </query>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show3">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show3"></unset>
             </condition>
           </progress>
         </search>
@@ -155,7 +182,7 @@
           <scale type="sharedCategory"></scale>
         </format>
         <format type="color" field="eventtype">
-          <colorPalette type="map">{"adm_user_logged_in":#53A051,"adm_user_login_failure":#DC4E41}</colorPalette>
+          <colorPalette type="map">{"system_user_logged_in":#53A051,"system_user_login_failure":#DC4E41,"system_user_logged_out":#CBA700}</colorPalette>
         </format>
         <format type="color" field="device">
           <colorPalette type="sharedList"></colorPalette>
